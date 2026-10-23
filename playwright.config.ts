@@ -18,7 +18,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: `npm run build && npx next start -p ${PORT}`,
+    command: `npm run build && PORT=${PORT} node .output/server/index.mjs`,
     url: `http://localhost:${PORT}/signin`,
     reuseExistingServer: true,
     timeout: 5 * 60_000,

@@ -150,6 +150,20 @@ npm run eval         # end-to-end trajectory evals + LLM-as-judge, against real 
 
 These tests call paid APIs and write to your Supabase project (they clean up the courses they create).
 
+### Deploy to a Node host (Hostinger, Render, a VPS...)
+
+`npm run build` builds with webpack (`next build --webpack`) and then assembles a self-contained server in **`.output/`** (`scripts/package-output.mjs`). Hosts that ask for a build folder and an entry file take:
+
+| Setting | Value |
+|---|---|
+| Build command | `npm run build` |
+| Output directory | `.output` |
+| Entry file | `server/index.mjs` |
+| Start command (if asked) | `node .output/server/index.mjs` |
+| Node | 20.9 or newer (22 is fine) |
+
+Set the environment variables from `.env.example` in the host's dashboard. `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` must be present **at build time** because they are compiled into the browser code. The entry file listens on `PORT` (set by the host) on all interfaces. Webpack is used instead of Turbopack for production because Turbopack starts a helper Node process for CSS that some shared hosts kill.
+
 ### Deploy to Vercel
 
 1. Import the repo into Vercel (framework: Next.js).
