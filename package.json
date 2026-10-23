@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
+    "postbuild": "node scripts/package-output.mjs",
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write .",
