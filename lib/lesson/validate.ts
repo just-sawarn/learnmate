@@ -185,7 +185,13 @@ export function validateScript(
       prompt: opts.exercisePrompts[id] ?? "Try the exercise.",
     });
   }
-  if (scenes.length < 3) throw new Error("Too few valid scenes remain after validation.");
+  if (scenes.length < 3)
+    throw new Error(
+      `Too few valid scenes remain after validation (${dropped
+        .slice(0, 4)
+        .map((d) => `#${d.index}: ${d.reason}`)
+        .join("; ")}).`,
+    );
   return { script: { title: envelope.title, directedBy, scenes }, dropped };
 }
 

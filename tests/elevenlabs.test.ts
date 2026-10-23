@@ -116,6 +116,12 @@ describe("a rejected voice", () => {
     await expect(synthesizeWithElevenLabs("one")).rejects.toThrow(/402/);
     await expect(synthesizeWithElevenLabs("two")).rejects.toThrow(/skipped/);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    // Fixing the cause (here, a different key after upgrading the plan) works immediately, with no wait.
+    process.env.ELEVENLABS_API_KEY = "upgraded-key";
+    vi.resetModules();
+    const again = await import("@/lib/ai/elevenlabs");
+    await expect(again.synthesizeWithElevenLabs("three")).rejects.toThrow(/402/);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     vi.unstubAllGlobals();
   });
 });

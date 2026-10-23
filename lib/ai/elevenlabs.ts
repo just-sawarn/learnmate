@@ -46,8 +46,12 @@ export function wordTimesFromAlignment(text: string, a: ElevenAlignment): number
 }
 
 /** After a rejection that won't fix itself (bad key, voice not allowed on the plan, out of credits), skip ElevenLabs briefly. */
-const BLOCK_MS = 10 * 60_000;
-let blocked: { until: number; reason: string } | null = null;
+// It is tied to the key and voice that were rejected, so fixing either (upgrading the plan, a new key, another voice) takes
+// effect straight away, and it only lasts a couple of minutes either way.
+const BLOCK_MS = 2 * 60_000;
+let blocked: { until: number; reason: string; config: string } | null = null;
+const configId = () =>
+  `${serverEnv().ELEVENLABS_API_KEY}|${serverEnv().ELEVENLABS_VOICE_ID}|${serverEnv().ELEVENLABS_MODEL}`;
 
 async function request(text: string, signal: AbortSignal): Promise<Response> {
   const env = serverEnv();
@@ -77,7 +81,7 @@ async function request(text: string, signal: AbortSignal): Promise<Response> {
  * the storage bucket already use), plus exact word timing for the animation. Retries once on rate limits and 5xx.
  */
 export async function synthesizeWithElevenLabs(text: string): Promise<Recording> {
-  if (blocked && Date.now() < blocked.until)
+  if (blocked && Date.now() < blocked.until && blocked.config === configId())
     throw new Error(`ElevenLabs skipped (rejected recently: ${blocked.reason})`);
   let lastError = "no response";
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -101,7 +105,11 @@ export async function synthesizeWithElevenLabs(text: string): Promise<Recording>
       lastError = `HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`;
       // 4xx other than a rate limit (bad key, unknown voice, out of credits) won't change on retry.
       if (res.status !== 429 && res.status < 500) {
-        blocked = { until: Date.now() + BLOCK_MS, reason: lastError.slice(0, 160) };
+        blocked = {
+          until: Date.now() + BLOCK_MS,
+          reason: lastError.slice(0, 160),
+          config: configId(),
+        };
         break;
       }
       await new Promise((r) => setTimeout(r, 1200));
