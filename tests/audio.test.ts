@@ -40,12 +40,29 @@ describe("narration timing", () => {
 
   it("estimates from the word count when there is no recording", () => {
     const long = scene(Array(60).fill("word").join(" "));
-    expect(speechSeconds(long)).toBeCloseTo(25, 0);
+    expect(speechSeconds(long)).toBeCloseTo(20, 0); // 60 words at 3 words a second
   });
 
   it("lays out frames so captions can follow the speech and not the trailing pause", () => {
     const { timed } = layout([scene("Hello there student friend.", { path: "x.wav", seconds: 4 })]);
     expect(timed[0].speechFrames).toBe(120);
     expect(timed[0].frames).toBeGreaterThan(timed[0].speechFrames);
+  });
+});
+
+import { projectWordTimes, wordStarts } from "@/lib/lesson/narration";
+describe("live browser-voice timing", () => {
+  it("finds where each word starts", () => {
+    expect(wordStarts("Hi  there, you")).toEqual([0, 4, 11]);
+  });
+  it("interpolates between reported words and projects the rest at the pace heard", () => {
+    // words 0 and 2 have been spoken (at 0s and 1s); word 1 is in between; words 3 and 4 are still to come
+    const t = projectWordTimes([0, undefined, 1], 5);
+    expect(t[1]).toBeCloseTo(0.5);
+    expect(t[3]).toBeCloseTo(1.5);
+    expect(t[4]).toBeCloseTo(2);
+  });
+  it("estimates from a default pace before anything has been spoken", () => {
+    expect(projectWordTimes([], 3, 0.4)).toEqual([0, 0.4, 0.8]);
   });
 });

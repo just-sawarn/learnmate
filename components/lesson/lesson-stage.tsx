@@ -6,8 +6,17 @@ import { LessonPlayerFrame } from "@/components/design/lesson-player-frame";
 import { PageChip } from "@/components/source/source-context";
 import { ProviderBadge } from "@/components/ui/provider-badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { speak, speechSupported, stopSpeaking, type NarrationLang } from "@/lib/lesson/narration";
-import { FPS, layout, sceneSeconds, speechSeconds } from "@/lib/lesson/timing";
+import {
+  pauseSpeaking,
+  projectWordTimes,
+  resumeSpeaking,
+  speak,
+  speechSupported,
+  stopSpeaking,
+  wordStarts,
+  type NarrationLang,
+} from "@/lib/lesson/narration";
+import { FPS, layout, PAUSE_SECONDS, sceneSeconds, speechSeconds } from "@/lib/lesson/timing";
 import { FrameProvider } from "@/lib/motion";
 import { tracePython } from "@/lib/runners/python";
 import { ENERGY_TEMPO, type LessonScript, type Scene } from "@/lib/schemas/lesson";
@@ -70,6 +79,13 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
     }
   }, []);
   const [scale, setScale] = useState(1);
+  /** What the browser voice has told us about the scene it is speaking (real word times, real end). */
+  const [live, setLive] = useState<{
+    words?: number[];
+    speaking: boolean;
+    speechFrames?: number;
+    totalFrames?: number;
+  } | null>(null);
   const frameBox = useRef<HTMLDivElement>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
   const clock = useRef({
@@ -78,6 +94,10 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
     pausedAt: 0,
     endedAt: null as number | null,
     usingAudio: false,
+    /** Browser voice: is an utterance in progress, how long it really took, and a token to ignore stale callbacks. */
+    speaking: false,
+    measured: null as number | null,
+    voiceToken: 0,
     checkpointFired: false,
     raf: 0,
     started: false,
@@ -167,10 +187,14 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
     const t = readTime();
     setFrame(t * FPS);
 
+    // With the browser's voice the scene lasts exactly as long as the voice does, however fast or slow it speaks.
+    const browserSpeaking = !c.usingAudio && c.speaking;
+    const spokenFor = c.measured ?? speechSeconds(scene);
     if (
       scene.type === "Checkpoint" &&
       !c.checkpointFired &&
-      t >= speechSeconds(scene) + CHECKPOINT_LINGER
+      !browserSpeaking &&
+      t >= spokenFor + CHECKPOINT_LINGER
     ) {
       c.checkpointFired = true;
       setPlaying(false);
@@ -180,7 +204,9 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
       handlers.current.onCheckpoint(scene.exerciseId);
       return;
     }
-    if (t >= sceneSeconds(scene)) {
+    const sceneEnd =
+      c.measured !== null && !c.usingAudio ? c.measured + PAUSE_SECONDS : sceneSeconds(scene);
+    if (!browserSpeaking && t >= sceneEnd) {
       if (c.index < scenesRef.current.length - 1) {
         beginRef.current(c.index + 1, true);
       } else {
@@ -205,6 +231,10 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
       stopSpeaking();
       c.index = i;
       c.endedAt = null;
+      c.speaking = false;
+      c.measured = null;
+      c.voiceToken++;
+      setLive(null);
       c.checkpointFired = false;
       c.started = true;
       setStarted(true);
@@ -229,7 +259,33 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
           });
         }
       } else if (play && voiceRef.current && speechSupported()) {
-        speak(scene.narration, lang);
+        const token = c.voiceToken;
+        const starts = wordStarts(scene.narration);
+        const times: (number | undefined)[] = [];
+        c.speaking = true;
+        setLive({ speaking: true });
+        speak(
+          scene.narration,
+          lang,
+          () => {
+            if (c.voiceToken !== token) return;
+            c.speaking = false;
+            c.measured = (performance.now() - c.startedAt) / 1000;
+            setLive((prev) => ({
+              ...prev,
+              speaking: false,
+              speechFrames: c.measured! * FPS,
+              totalFrames: (c.measured! + PAUSE_SECONDS) * FPS,
+            }));
+          },
+          (charIndex) => {
+            if (c.voiceToken !== token) return;
+            const w = starts.reduce((best, st, k) => (st <= charIndex ? k : best), 0);
+            times[w] = (performance.now() - c.startedAt) / 1000;
+            const words = projectWordTimes(times, starts.length).map((x) => x * FPS);
+            setLive((prev) => ({ speaking: true, ...prev, words }));
+          },
+        );
       }
       if (play) {
         setPlaying(true);
@@ -248,7 +304,9 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
     c.pausedAt = readTime();
     stopLoop();
     audio.current?.pause();
-    stopSpeaking();
+    // A browser voice mid-sentence is paused, not cancelled, so resuming carries on from the same word.
+    if (c.speaking && !c.usingAudio) pauseSpeaking();
+    else stopSpeaking();
     setPlaying(false);
   }, [readTime, stopLoop]);
 
@@ -260,6 +318,7 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
       return;
     }
     c.startedAt = performance.now() - c.pausedAt * 1000;
+    if (c.speaking && !c.usingAudio) resumeSpeaking();
     if (c.usingAudio && c.endedAt === null)
       void audio.current?.play().catch(() => (c.usingAudio = false));
     setPlaying(true);
@@ -294,6 +353,20 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
   const scene = current?.scene;
   const shownFrame = started ? frame : Math.min(sceneSeconds(scene), POSTER_SECONDS) * FPS;
   const recorded = !!scene?.audio && !!urlFor(scene);
+  // Browser voice: captions follow the words as they are really spoken, and the scene is as long as the speech.
+  let sceneFrames = current?.frames ?? 0;
+  let speechFrames = current?.speechFrames ?? 0;
+  let wordFrames = current?.wordFrames;
+  if (!recorded && live) {
+    if (live.words) wordFrames = live.words;
+    if (live.speaking) {
+      sceneFrames = Math.max(sceneFrames, shownFrame + 90);
+      speechFrames = Math.max(speechFrames, shownFrame + 45);
+    } else if (live.totalFrames !== undefined) {
+      sceneFrames = live.totalFrames;
+      speechFrames = live.speechFrames ?? speechFrames;
+    }
+  }
   const totalFrames = timed.reduce((n, t) => n + t.frames, 0);
   const progress =
     totalFrames > 0
@@ -401,10 +474,10 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
             <FrameProvider
               frame={shownFrame}
               fps={FPS}
-              durationInFrames={current.frames}
-              speechInFrames={current.speechFrames}
+              durationInFrames={sceneFrames}
+              speechInFrames={speechFrames}
               narration={scene.narration}
-              wordFrames={current.wordFrames}
+              wordFrames={wordFrames}
               emphasis={scene.emphasis}
               tempo={ENERGY_TEMPO[scene.energy ?? "balanced"]}
             >

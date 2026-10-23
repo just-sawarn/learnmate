@@ -45,6 +45,10 @@ export function wordTimesFromAlignment(text: string, a: ElevenAlignment): number
   return times;
 }
 
+/** After a rejection that won't fix itself (bad key, voice not allowed on the plan, out of credits), skip ElevenLabs briefly. */
+const BLOCK_MS = 10 * 60_000;
+let blocked: { until: number; reason: string } | null = null;
+
 async function request(text: string, signal: AbortSignal): Promise<Response> {
   const env = serverEnv();
   return fetch(
@@ -73,6 +77,8 @@ async function request(text: string, signal: AbortSignal): Promise<Response> {
  * the storage bucket already use), plus exact word timing for the animation. Retries once on rate limits and 5xx.
  */
 export async function synthesizeWithElevenLabs(text: string): Promise<Recording> {
+  if (blocked && Date.now() < blocked.until)
+    throw new Error(`ElevenLabs skipped (rejected recently: ${blocked.reason})`);
   let lastError = "no response";
   for (let attempt = 0; attempt < 2; attempt++) {
     const controller = new AbortController();
@@ -94,7 +100,10 @@ export async function synthesizeWithElevenLabs(text: string): Promise<Recording>
       }
       lastError = `HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`;
       // 4xx other than a rate limit (bad key, unknown voice, out of credits) won't change on retry.
-      if (res.status !== 429 && res.status < 500) break;
+      if (res.status !== 429 && res.status < 500) {
+        blocked = { until: Date.now() + BLOCK_MS, reason: lastError.slice(0, 160) };
+        break;
+      }
       await new Promise((r) => setTimeout(r, 1200));
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);

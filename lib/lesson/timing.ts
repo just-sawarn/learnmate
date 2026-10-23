@@ -1,7 +1,8 @@
 import type { Scene } from "@/lib/schemas/lesson";
 
 export const FPS = 30;
-const WORDS_PER_SECOND = 2.4;
+// Roughly how fast the browser's built-in voices speak; recordings and live speech events replace this estimate.
+const WORDS_PER_SECOND = 3;
 /** Breathing room after the voice stops, so the last animation lands before the next scene. */
 export const PAUSE_SECONDS = 0.9;
 const MIN_SECONDS = 5;

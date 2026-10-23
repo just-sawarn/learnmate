@@ -95,3 +95,27 @@ describe("narration voice choice", () => {
     expect(needsRecording({})).toBe(true);
   });
 });
+
+describe("a rejected voice", () => {
+  it("is skipped for a while after a permanent rejection instead of being called for every scene", async () => {
+    vi.resetModules();
+    Object.assign(process.env, {
+      SUPABASE_SERVICE_ROLE_KEY: "x",
+      GEMINI_API_KEY: "x",
+      ANTHROPIC_API_KEY: "x",
+      GROQ_API_KEY: "x",
+      ONLINECOMPILER_API_KEY: "x",
+      ELEVENLABS_API_KEY: "k",
+      ELEVENLABS_VOICE_ID: "library-voice",
+    });
+    const fetchMock = vi.fn(
+      async () => new Response('{"detail":{"code":"paid_plan_required"}}', { status: 402 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { synthesizeWithElevenLabs } = await import("@/lib/ai/elevenlabs");
+    await expect(synthesizeWithElevenLabs("one")).rejects.toThrow(/402/);
+    await expect(synthesizeWithElevenLabs("two")).rejects.toThrow(/skipped/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+});

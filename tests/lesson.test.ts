@@ -80,9 +80,9 @@ describe("lesson script validation", () => {
 describe("scene timing", () => {
   it("scales with narration length and never goes below the script's own seconds", () => {
     const short = sceneSeconds({ narration: "Short narration for a scene.", seconds: 8 });
-    const long = sceneSeconds({ narration: Array(80).fill("word").join(" "), seconds: 6 });
+    const long = sceneSeconds({ narration: Array(120).fill("word").join(" "), seconds: 6 });
     expect(short).toBe(8);
-    expect(long).toBeGreaterThan(30);
+    expect(long).toBeGreaterThan(30); // 120 words at 3 a second is 40s of speech
   });
 
   it("lays scenes end to end and finds the scene at a frame", () => {
