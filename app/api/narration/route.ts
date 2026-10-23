@@ -10,7 +10,7 @@ const bodySchema = z.object({
   uiLang: z.enum(["en", "hi"]).default("en"),
 });
 
-/** Records the lesson's narration with Gemini text-to-speech so animation can follow the real voice. */
+/** Records the lesson's narration (ElevenLabs when configured, else Gemini) so animation can follow the real voice. */
 export async function POST(request: Request) {
   const auth = await authorize("narration");
   if (isResponse(auth)) return auth;
@@ -24,7 +24,10 @@ export async function POST(request: Request) {
       parsed.data.topicId,
       parsed.data.uiLang,
     );
-    return NextResponse.json({ ...result, provider: "gemini" });
+    return NextResponse.json({
+      ...result,
+      provider: result.voice.startsWith("elevenlabs") ? "elevenlabs" : "gemini",
+    });
   } catch (error) {
     if (error instanceof LessonMissingError) return jsonError(404, "Lesson not found.");
     return jsonError(

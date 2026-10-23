@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authorize, isResponse, jsonError } from "@/lib/api";
 import { AiOutputError } from "@/lib/ai/types";
+import { wantedVoice } from "@/lib/lesson/narrate";
 import { getOrCreateLesson, LessonNotFoundError } from "@/lib/lesson/generate";
 
 export const maxDuration = 90;
@@ -20,7 +21,8 @@ export async function POST(request: Request) {
 
   try {
     const result = await getOrCreateLesson(auth.supabase, parsed.data.topicId, parsed.data.uiLang);
-    return NextResponse.json({ ...result, provider: "gemini" });
+    // narrationVoice tells the player which voice recordings should be in, so older ones get upgraded.
+    return NextResponse.json({ ...result, provider: "claude", narrationVoice: wantedVoice() });
   } catch (error) {
     if (error instanceof LessonNotFoundError) return jsonError(404, "Topic not found.");
     if (error instanceof AiOutputError)

@@ -1,11 +1,12 @@
 import { cn } from "@/lib/utils";
 
-export type Provider = "gemini" | "claude" | "groq";
+export type Provider = "gemini" | "claude" | "groq" | "elevenlabs";
 
 const STYLES: Record<Provider, { label: string; className: string }> = {
   gemini: { label: "Gemini", className: "" },
   claude: { label: "Claude", className: "" },
   groq: { label: "Groq", className: "" },
+  elevenlabs: { label: "ElevenLabs", className: "" },
 };
 
 /** Small chip shown on every AI response so the routing is visible. */

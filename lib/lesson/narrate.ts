@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { elevenLabsVoiceTag } from "@/lib/ai/elevenlabs";
 import { synthesizeNarration } from "@/lib/ai/tts";
 import { alignWords, analyze } from "@/lib/audio/align";
 import { lessonScriptSchema, type LessonScript } from "@/lib/schemas/lesson";
@@ -8,7 +9,8 @@ import type { Database, Json } from "@/lib/supabase/types";
 type Supabase = SupabaseClient<Database>;
 
 export const NARRATION_BUCKET = "narration";
-const CONCURRENCY = 3;
+// ElevenLabs plans allow only a few simultaneous requests.
+const CONCURRENCY = 2;
 
 export interface NarrationResult {
   script: LessonScript;
@@ -16,6 +18,8 @@ export interface NarrationResult {
   recorded: number;
   /** Scenes that could not be recorded; the player falls back to the browser's voice for these. */
   failed: number;
+  /** The voice used for new recordings. */
+  voice: string;
 }
 
 export class LessonMissingError extends Error {}
@@ -28,8 +32,24 @@ export function wordTimes(narration: string, wav: Buffer): number[] | undefined 
     : undefined;
 }
 
-export function narrationPath(userId: string, text: string, uiLang: string): string {
-  return `${userId}/${createHash("sha1").update(`${uiLang}|${text}`).digest("hex")}.wav`;
+/** The voice new recordings are made with: ElevenLabs when configured, otherwise Gemini. */
+export function wantedVoice(): string {
+  return elevenLabsVoiceTag() ?? "gemini";
+}
+
+export function narrationPath(
+  userId: string,
+  text: string,
+  uiLang: string,
+  voice = wantedVoice(),
+): string {
+  return `${userId}/${createHash("sha1").update(`${voice}|${uiLang}|${text}`).digest("hex")}.wav`;
+}
+
+/** A scene needs recording if it has no audio, or ElevenLabs is configured and its audio is in another voice. */
+export function needsRecording(scene: { audio?: { voice?: string } }): boolean {
+  if (!scene.audio) return true;
+  return elevenLabsVoiceTag() !== null && scene.audio.voice !== elevenLabsVoiceTag();
 }
 
 /** Records any scene narration that is missing, stores it privately, and saves the lengths in the cached lesson. */
@@ -68,19 +88,27 @@ export async function recordNarration(
       .update({ script: script as unknown as Json })
       .eq("id", row.id);
 
+  const voice = wantedVoice();
   const todo = script.scenes
     .map((scene, index) => ({ scene, index }))
-    .filter(({ scene }) => !scene.audio);
+    .filter(({ scene }) => needsRecording(scene));
   const recordOne = async ({ scene, index }: (typeof todo)[number]) => {
-    const { wav, seconds } = await synthesizeNarration(scene.narration);
-    const path = narrationPath(userId, scene.narration, uiLang);
+    // Upgrading a recording to the new voice never falls back to a different one; a missing recording may.
+    const rec = await synthesizeNarration(scene.narration, { allowFallback: !scene.audio });
+    const { wav, seconds } = rec;
+    const path = narrationPath(userId, scene.narration, uiLang, rec.voice);
     const { error } = await supabase.storage
       .from(NARRATION_BUCKET)
       .upload(path, wav, { contentType: "audio/wav", upsert: true });
     if (error) throw error;
     script.scenes[index] = {
       ...scene,
-      audio: { path, seconds, words: wordTimes(scene.narration, wav) },
+      audio: {
+        path,
+        seconds,
+        voice: rec.voice,
+        words: rec.words ?? wordTimes(scene.narration, wav),
+      },
     };
   };
 
@@ -97,7 +125,12 @@ export async function recordNarration(
         error instanceof Error ? error.message : error,
       );
       if (backfilled) await saveScript();
-      return { script, recorded: script.scenes.filter((s) => s.audio).length, failed: todo.length };
+      return {
+        script,
+        recorded: script.scenes.filter((s) => s.audio).length,
+        failed: todo.length,
+        voice,
+      };
     }
   }
   let next = 0;
@@ -122,5 +155,5 @@ export async function recordNarration(
 
   const recorded = script.scenes.filter((s) => s.audio).length;
   if (todo.length > failed || backfilled) await saveScript();
-  return { script, recorded, failed: script.scenes.length - recorded };
+  return { script, recorded, failed: script.scenes.length - recorded, voice };
 }

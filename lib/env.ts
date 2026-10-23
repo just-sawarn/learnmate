@@ -10,6 +10,11 @@ const serverSchema = z.object({
   /** The live tutor (Guru) talks to the student, so it gets the stronger model even when generation uses a fast one. */
   ANTHROPIC_TUTOR_MODEL: z.string().min(1).default("claude-sonnet-5-5"),
   ANTHROPIC_FALLBACK_MODEL: z.string().min(1).default("claude-sonnet-5-5"),
+  /** Narration voice. Optional: without a key the lesson voice falls back to Gemini, then to the browser's voice. */
+  ELEVENLABS_API_KEY: z.string().min(1).optional(),
+  ELEVENLABS_VOICE_ID: z.string().min(1).optional(),
+  /** multilingual_v2 is the most natural and handles Hindi; flash_v2_5 is faster and cheaper. */
+  ELEVENLABS_MODEL: z.string().min(1).default("eleven_multilingual_v2"),
   GEMINI_TTS_MODEL: z.string().min(1).default("gemini-3.8-flash-tts"),
   GROQ_API_KEY: z.string().min(1),
   GROQ_MODEL: z.string().min(1).default("openai/gpt-oss-20b"),

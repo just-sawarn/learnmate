@@ -1,11 +1,9 @@
 import { pcmToWav, wavSeconds } from "@/lib/audio/wav";
 import { serverEnv } from "@/lib/env";
+import { elevenLabsConfigured, synthesizeWithElevenLabs, type Recording } from "./elevenlabs";
 import { gemini, withModelFallback } from "./gemini";
 
-export interface Narration {
-  wav: Buffer;
-  seconds: number;
-}
+export type Narration = Recording;
 
 const VOICE = "Kore";
 const FALLBACK_TTS_MODELS = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts"];
@@ -16,10 +14,27 @@ function sampleRate(mime: string): number {
 }
 
 /**
- * Records one scene's narration with Gemini text-to-speech and returns a playable WAV and its exact length.
- * Tries the configured TTS model, then fallbacks, so a busy model doesn't leave the lesson silent.
+ * Records one scene's narration and returns a playable WAV and its exact length. ElevenLabs first when configured,
+ * then Gemini text-to-speech (configured model, then fallbacks), so a busy provider never leaves the lesson silent.
  */
-export async function synthesizeNarration(text: string): Promise<Narration> {
+export async function synthesizeNarration(
+  text: string,
+  opts: { allowFallback?: boolean } = {},
+): Promise<Narration> {
+  // ElevenLabs is the narrator when it is configured. If it fails, Gemini steps in (unless the caller is only
+  // upgrading an existing recording, where keeping the old audio beats swapping in a third voice).
+  if (elevenLabsConfigured()) {
+    try {
+      return await synthesizeWithElevenLabs(text);
+    } catch (error) {
+      console.error("[tts]", error instanceof Error ? error.message : error);
+      if (opts.allowFallback === false) throw error;
+    }
+  }
+  return synthesizeWithGemini(text);
+}
+
+async function synthesizeWithGemini(text: string): Promise<Narration> {
   const env = serverEnv();
   const models = [env.GEMINI_TTS_MODEL, ...FALLBACK_TTS_MODELS, env.GEMINI_TTS_MODEL];
   return withModelFallback(async (model) => {
@@ -42,6 +57,6 @@ export async function synthesizeNarration(text: string): Promise<Narration> {
     const seconds = wavSeconds(wav);
     if (!seconds || seconds < 0.3)
       throw new Error("The voice model returned unusable audio (timed out).");
-    return { wav, seconds };
+    return { wav, seconds, voice: "gemini" };
   }, models);
 }

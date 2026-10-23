@@ -50,7 +50,7 @@ interface Props {
 type LessonState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "recording"; script: LessonScript }
+  | { status: "recording"; script: LessonScript; voice?: string }
   | { status: "ready"; script: LessonScript; audioUrls: Record<string, string> };
 
 export function LearnWorkspace({
@@ -98,8 +98,17 @@ export function LearnWorkspace({
         body: JSON.stringify({ topicId: topic.id, uiLang }),
         signal: controller.signal,
       });
-      const data = (await res.json()) as { script?: unknown; error?: string };
-      return { ok: res.ok, script: lessonScriptSchema.safeParse(data.script), error: data.error };
+      const data = (await res.json()) as {
+        script?: unknown;
+        error?: string;
+        narrationVoice?: string;
+      };
+      return {
+        ok: res.ok,
+        script: lessonScriptSchema.safeParse(data.script),
+        error: data.error,
+        narrationVoice: data.narrationVoice,
+      };
     };
 
     /** Signed URLs for every recorded scene; empty when nothing is recorded (the browser voice takes over). */
@@ -117,8 +126,12 @@ export function LearnWorkspace({
       if (!lessonRes.ok || !lessonRes.script.success)
         throw new Error(lessonRes.error ?? "The lesson wasn't usable.");
       let script = lessonRes.script.data;
-      if (script.scenes.some((sc) => !sc.audio)) {
-        setLesson({ status: "recording", script });
+      // Record scenes with no audio, and re-record ones made in an older voice when a new voice is configured.
+      const wanted = lessonRes.narrationVoice;
+      const stale = (sc: LessonScript["scenes"][number]) =>
+        !sc.audio || (wanted?.startsWith("elevenlabs") && sc.audio.voice !== wanted);
+      if (script.scenes.some(stale)) {
+        setLesson({ status: "recording", script, voice: wanted });
         try {
           const voiced = await post("/api/narration");
           if (voiced.ok && voiced.script.success) script = voiced.script.data;
@@ -296,7 +309,10 @@ export function LearnWorkspace({
               <div className="space-y-3" aria-busy="true">
                 <Skeleton className="aspect-video w-full" />
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <ProviderBadge provider="gemini" note="voice" />
+                  <ProviderBadge
+                    provider={lesson.voice?.startsWith("elevenlabs") ? "elevenlabs" : "gemini"}
+                    note="voice"
+                  />
                   Recording the narration for &ldquo;{lesson.script.title}&rdquo;… (first time only)
                 </p>
               </div>
@@ -311,6 +327,11 @@ export function LearnWorkspace({
                     }
                   />
                   <span>{lesson.script.title}</span>
+                  {lesson.script.scenes
+                    .find((sc) => sc.audio)
+                    ?.audio?.voice?.startsWith("elevenlabs") && (
+                    <ProviderBadge provider="elevenlabs" note="narration" />
+                  )}
                 </div>
                 <LessonStage
                   script={lesson.script}

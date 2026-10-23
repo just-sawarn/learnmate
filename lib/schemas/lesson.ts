@@ -36,6 +36,8 @@ const base = {
     .object({
       path: z.string(),
       seconds: z.number().positive(),
+      /** Who recorded it ("elevenlabs:<voice>" or "gemini"), so a recording can be upgraded when the voice changes. */
+      voice: z.string().max(80).optional(),
       /** Start time (seconds) of each narration word, measured from the recording's pauses. */
       words: z.array(z.number()).optional(),
     })
