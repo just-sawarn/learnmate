@@ -1,5 +1,4 @@
 import { pathToFileURL } from "node:url";
-import { createRequire } from "node:module";
 import path from "node:path";
 import { assertPageCount, assertUploadSize, IngestError, MIN_PAGE_CHARS } from "./limits";
 
@@ -16,9 +15,11 @@ let pdfjs: PdfJs | undefined;
 async function loadPdfJs(): Promise<PdfJs> {
   if (!pdfjs) {
     pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    // Resolve from the project root: `import.meta.url` is rewritten by the bundler and can't be used here.
-    const workerPath = createRequire(path.join(process.cwd(), "package.json")).resolve(
-      "pdfjs-dist/legacy/build/pdf.worker.mjs",
+    // Build the path by hand: `import.meta.url` is rewritten by the bundler, and webpack refuses to statically resolve
+    // an ES module worker. The file is shipped with the deployment through outputFileTracingIncludes (next.config.ts).
+    const workerPath = path.join(
+      process.cwd(),
+      "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
     );
     pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).href;
   }

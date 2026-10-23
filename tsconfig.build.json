@@ -1,0 +1,15 @@
+{
+  // Used by `next build` (see next.config.ts). The app is type-checked without the test, eval and script folders, which
+  // need dev-only packages (vitest, dotenv, pyodide) that a production install leaves out. `npx tsc --noEmit` still
+  // checks everything with tsconfig.json.
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "tests",
+    "evals",
+    "e2e",
+    "scripts",
+    "playwright.config.ts",
+    "vitest.config.ts"
+  ]
+}
