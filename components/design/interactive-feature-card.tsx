@@ -9,39 +9,18 @@ type InteractiveFeatureCardProps = {
   className?: string;
 };
 
+/** Lift, border and a soft spotlight that follows a mouse. Touch and keyboard get lift and border only. */
 export function InteractiveFeatureCard({ children, className }: InteractiveFeatureCardProps) {
-  function updateSpotlight(event: PointerEvent<HTMLDivElement>) {
-    if (
-      event.pointerType !== "mouse" ||
-      !window.matchMedia(
-        "(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)",
-      ).matches
-    )
-      return;
+  function moveSpotlight(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "mouse") return;
     const card = event.currentTarget;
     const bounds = card.getBoundingClientRect();
-    const x = event.clientX - bounds.left;
-    const y = event.clientY - bounds.top;
-    const tiltX = ((y / bounds.height - 0.5) * -4).toFixed(2);
-    const tiltY = ((x / bounds.width - 0.5) * 4).toFixed(2);
-    card.style.setProperty("--spot-x", `${x}px`);
-    card.style.setProperty("--spot-y", `${y}px`);
-    card.style.setProperty("--tilt-x", `${tiltX}deg`);
-    card.style.setProperty("--tilt-y", `${tiltY}deg`);
-  }
-
-  function resetSpotlight(event: PointerEvent<HTMLDivElement>) {
-    const card = event.currentTarget;
-    card.style.setProperty("--tilt-x", "0deg");
-    card.style.setProperty("--tilt-y", "0deg");
+    card.style.setProperty("--spot-x", `${event.clientX - bounds.left}px`);
+    card.style.setProperty("--spot-y", `${event.clientY - bounds.top}px`);
   }
 
   return (
-    <div
-      className="interactive-card h-full"
-      onPointerMove={updateSpotlight}
-      onPointerLeave={resetSpotlight}
-    >
+    <div className="interactive-card h-full" onPointerMove={moveSpotlight}>
       <Card
         className={cn("interactive-card__surface group relative h-full overflow-hidden", className)}
       >

@@ -24,8 +24,8 @@ export function LandingHeader({ signedIn }: { signedIn: boolean }) {
       className={cn(
         "sticky top-0 z-30 border-b transition-[background-color,box-shadow] duration-300",
         scrolled
-          ? "bg-background/92 shadow-[0_8px_30px_-20px_rgb(var(--shadow-color)/0.35)] backdrop-blur-xl"
-          : "bg-background/72 backdrop-blur-lg",
+          ? "bg-background shadow-[0_8px_30px_-20px_rgb(var(--shadow-color)/0.35)]"
+          : "bg-background/92",
       )}
     >
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">

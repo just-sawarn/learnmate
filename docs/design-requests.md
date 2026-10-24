@@ -33,3 +33,10 @@ two of them (please keep these when you edit):
 
 Accessible names now come from the frames: Guru is `aside` "Guru tutor" (e2e tests rely on it), plus the
 existing "Close Guru", "Ask Guru", "Send", "Play"/"Pause", "Previous scene", "Next scene", "Run".
+
+## Build blocked by two type errors in core-team files (not frontend-owned)
+
+- `npm run build` and `npm run typecheck` currently fail on code already in the branch, so the frontend cannot produce a production build until these are fixed by their owners:
+  - `components/tutor/guru-panel.tsx(214,47)`: `Property 'message' does not exist` on the `{ t: "edit" } | { t: "error" }` union (needs a narrowing check on `t`).
+  - `tests/quiz.test.ts(75,9)`: the test fixture is missing the new required `kind` and `language` fields.
+- Status: resolved. After merging the latest origin/main, `npm run typecheck`, lint and `npm run build` all pass.
