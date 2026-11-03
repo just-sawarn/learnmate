@@ -34,7 +34,6 @@ import { FallingText } from "@/components/design/falling-text";
 import {
   EASE,
   GuruBubble,
-  ProviderChip,
   TypingDots,
   inView,
   reveal,
@@ -205,10 +204,12 @@ export function SectionHeading({
       <h2
         id={id}
         className={cn(
-          "m-0 leading-[1.08] font-semibold tracking-[-0.03em] text-ink",
+          "m-0 font-semibold tracking-[-0.03em] text-ink",
           compact
             ? "text-[24px] text-balance sm:text-[30px] lg:text-[34px]"
             : "max-w-[18ch] text-[34px] sm:text-[44px]",
+          // After the size classes: tailwind-merge would otherwise drop it as a font-size conflict.
+          "leading-[1.08]",
         )}
       >
         <FallingText text={title} trigger="view" />
@@ -220,46 +221,13 @@ export function SectionHeading({
 /** The persistent section heading and intro. It lives inside the pinned composition, so it stays put. */
 export function HowHeader() {
   return (
-    <div className="flex flex-col gap-1.5 lg:flex-row lg:items-end lg:justify-between lg:gap-12">
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-12">
       <SectionHeading eyebrow={COPY.how.eyebrow} title={COPY.how.title} id="how-title" compact />
       <p className="m-0 max-w-md text-sm leading-6 text-ink-2 max-sm:sr-only lg:text-right">
         Four steps: upload a PDF, watch animated lessons play, try the exercise in the IDE with
         Guru&apos;s help, and watch your mastery and revision plan update.
       </p>
     </div>
-  );
-}
-
-/* ---------- trust strip ---------- */
-
-export function TrustStrip() {
-  return (
-    <section aria-label="Powered by" className="border-y border-line px-4 py-8 sm:px-6">
-      <motion.div
-        variants={stagger(0.08)}
-        initial="hidden"
-        whileInView="show"
-        viewport={inView}
-        className="mx-auto flex max-w-[1200px] flex-col items-start gap-6 lg:flex-row lg:items-center lg:justify-between"
-      >
-        <motion.p
-          variants={reveal}
-          className="m-0 text-xs font-medium tracking-[0.14em] text-lm-muted uppercase"
-        >
-          {COPY.trust.label}
-        </motion.p>
-        <ul className="m-0 grid w-full list-none grid-cols-2 gap-x-8 gap-y-5 p-0 lg:flex lg:w-auto lg:gap-12">
-          {COPY.trust.items.map((it) => (
-            <motion.li key={it.name} variants={reveal}>
-              <span className="block text-[22px] font-semibold tracking-[-0.02em] text-ink">
-                {it.name}
-              </span>
-              <span className="text-sm text-lm-muted">{it.role}</span>
-            </motion.li>
-          ))}
-        </ul>
-      </motion.div>
-    </section>
   );
 }
 
@@ -291,11 +259,7 @@ export function Problem() {
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start 75%", "end 55%"] });
   const words = COPY.problem.resolution.split(" ");
   return (
-    <section
-      ref={ref}
-      aria-label="The problem"
-      className="lm-aura lm-aura--slate px-4 py-14 sm:px-6 lg:py-[84px]"
-    >
+    <section ref={ref} aria-label="The problem" className="px-4 py-11 sm:px-6 lg:py-16">
       <div className="mx-auto max-w-[980px]">
         <motion.p
           variants={reveal}
@@ -360,7 +324,7 @@ export function PageSection({
     <section
       id={id}
       aria-labelledby={labelledBy}
-      className={cn("lm-section px-4 py-14 sm:px-6 lg:py-[84px]", className)}
+      className={cn("lm-section px-4 py-11 sm:px-6 lg:py-16", className)}
     >
       <div className="mx-auto max-w-[1200px]">{children}</div>
     </section>
@@ -417,14 +381,13 @@ function GuruChat() {
   return (
     <div
       ref={ref}
-      className="flex h-[540px] flex-col gap-3 rounded-[24px] border border-line bg-surface p-5 shadow-raised sm:p-6"
+      className="flex h-[460px] flex-col gap-3 rounded-[24px] border border-line bg-surface p-5 shadow-raised sm:p-6"
     >
       <div className="flex items-center gap-2 border-b border-line pb-3 text-sm font-semibold text-ink">
         <span className="flex size-6 items-center justify-center rounded-full bg-ink text-xs text-bg">
           G
         </span>
         Guru
-        <ProviderChip provider="Claude" className="ml-auto" />
       </div>
       <AnimatePresence initial={false}>
         {n >= 1 && <StudentBubble key="q1" text={q1.text} />}
@@ -436,13 +399,7 @@ function GuruChat() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: EASE }}
           >
-            <GuruBubble
-              text={a1.text}
-              play
-              duration={reduced ? 1 : 3400}
-              badge={false}
-              className="shadow-none"
-            />
+            <GuruBubble text={a1.text} play duration={reduced ? 1 : 3400} className="shadow-none" />
           </motion.div>
         )}
         {n >= 2 && (
@@ -489,13 +446,7 @@ function GuruChat() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: EASE }}
           >
-            <GuruBubble
-              text={a2.text}
-              play
-              duration={reduced ? 1 : 2000}
-              badge={false}
-              className="shadow-none"
-            />
+            <GuruBubble text={a2.text} play duration={reduced ? 1 : 2000} className="shadow-none" />
           </motion.div>
         )}
       </AnimatePresence>
@@ -509,7 +460,7 @@ export function GuruSection() {
     <section
       id="guru"
       aria-labelledby="guru-title"
-      className="lm-section lm-aura lm-aura--beam px-4 py-14 sm:px-6 lg:py-[84px]"
+      className="lm-section lm-aura lm-aura--beam px-4 py-11 sm:px-6 lg:py-16"
     >
       <div className="mx-auto grid max-w-[1200px] items-center gap-12 lg:grid-cols-2 lg:gap-20">
         <div>
@@ -519,7 +470,7 @@ export function GuruSection() {
             id="guru-title"
             className="mb-7"
           />
-          <ul className="m-0 flex list-none flex-col gap-4 p-0">
+          <ul className="m-0 flex list-none flex-col gap-5 p-0">
             {COPY.guru.manifesto.map((line, i) => (
               <motion.li
                 key={line}
@@ -568,10 +519,7 @@ function MarqueeRow({ items, reverse }: { items: string[]; reverse?: boolean }) 
 
 export function Languages() {
   return (
-    <section
-      aria-label="Languages you can run"
-      className="lm-aura lm-aura--beam py-14 lg:py-[84px]"
-    >
+    <section aria-label="Languages you can run" className="lm-aura lm-aura--beam py-11 lg:py-16">
       <p className="m-0 mb-6 px-4 text-center text-xs font-medium tracking-[0.14em] text-lm-muted uppercase">
         Runs in the side-along IDE
       </p>
@@ -606,7 +554,7 @@ export function Faq() {
     <section
       id="faq"
       aria-labelledby="faq-title"
-      className="lm-section lm-aura lm-aura--slate px-4 py-14 sm:px-6 lg:py-[84px]"
+      className="lm-section lm-aura lm-aura--slate px-4 py-11 sm:px-6 lg:py-16"
     >
       <div className="mx-auto grid max-w-[1200px] gap-10 lg:grid-cols-[1fr_1.6fr] lg:gap-20">
         <SectionHeading eyebrow={COPY.faq.eyebrow} title={COPY.faq.title} id="faq-title" />
@@ -616,7 +564,7 @@ export function Faq() {
             return (
               <div
                 key={item.q}
-                className="faq-row -mx-3 rounded-2xl px-3"
+                className="faq-row -mx-3 rounded-none px-3 lg:rounded-2xl"
                 data-open={active}
                 onPointerEnter={(e) => hoverOpen(e, i)}
                 onPointerLeave={hoverEnd}
@@ -688,7 +636,7 @@ export function LmFinalCta({ href, label }: { href: string; label: string }) {
   const panel = useRef<HTMLDivElement>(null);
   const onScreen = useInView(panel, { margin: "120px" });
   return (
-    <section aria-labelledby="cta-title" className="px-4 pb-12 sm:px-6 lg:pb-[84px]">
+    <section aria-labelledby="cta-title" className="px-4 pb-10 sm:px-6 lg:pb-16">
       <motion.div
         ref={panel}
         data-active={onScreen}
@@ -696,7 +644,7 @@ export function LmFinalCta({ href, label }: { href: string; label: string }) {
         initial="hidden"
         whileInView="show"
         viewport={inView}
-        className="brand-cta relative mx-auto max-w-[1200px] overflow-hidden rounded-[32px] px-6 py-14 text-center sm:py-20"
+        className="brand-cta relative mx-auto max-w-[1200px] overflow-hidden rounded-[32px] px-6 py-11 text-center sm:py-20"
       >
         <div
           aria-hidden="true"
@@ -755,7 +703,6 @@ export function LmFooter({ signedIn }: { signedIn: boolean }) {
           <p className="mt-3 mb-0 text-[15px] text-ink-2">
             Turn your study material into lessons you can run.
           </p>
-          <p className="mt-1 mb-0 text-sm text-lm-muted">Built in 24 hours at Equinox 2026</p>
         </div>
         <nav aria-label="Footer">
           <ul className="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 text-[15px]">
@@ -780,9 +727,6 @@ export function LmFooter({ signedIn }: { signedIn: boolean }) {
           </ul>
         </nav>
       </div>
-      <p className="mx-auto mt-10 mb-0 max-w-[1200px] text-sm text-lm-muted">
-        Gemini · Claude · Groq · Supabase
-      </p>
     </footer>
   );
 }

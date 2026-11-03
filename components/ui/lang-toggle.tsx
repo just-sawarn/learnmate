@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "./button";
 import { createClient } from "@/lib/supabase/browser";
 
-/** Switches the student's language (English / हिन्दी). Every Gemini and Claude prompt reads it from the profile. */
+/** Switches the student's language (English / हिन्दी). Every generated lesson, quiz and tutor reply reads it from the profile. */
 export function LangToggle() {
   const router = useRouter();
   const [lang, setLang] = useState<"en" | "hi" | null>(null);

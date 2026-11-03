@@ -10,7 +10,7 @@ import {
   useTransform,
   type MotionValue,
 } from "framer-motion";
-import { Asterisk, Database, FileText, Lock, Sparkles, Zap, type LucideIcon } from "lucide-react";
+import { FileText, Lock } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -222,37 +222,6 @@ export function BrowserFrame({
   );
 }
 
-const PROVIDER_ICONS: Record<string, LucideIcon> = {
-  Gemini: Sparkles,
-  Claude: Asterisk,
-  Groq: Zap,
-  Supabase: Database,
-};
-
-export function ProviderChip({
-  provider,
-  solid = false,
-  className,
-}: {
-  provider: string;
-  solid?: boolean;
-  className?: string;
-}) {
-  const Icon = PROVIDER_ICONS[provider] ?? Sparkles;
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
-        solid ? "border-ink bg-ink text-bg" : "border-line bg-surface text-ink-2",
-        className,
-      )}
-    >
-      <Icon size={11} strokeWidth={2.2} aria-hidden="true" />
-      {provider}
-    </span>
-  );
-}
-
 export function PageChip({ page, className }: { page: number; className?: string }) {
   return (
     <span
@@ -355,7 +324,6 @@ export function GuruBubble({
   play,
   duration = 2400,
   delay,
-  badge = true,
   className,
 }: {
   text: string;
@@ -363,7 +331,6 @@ export function GuruBubble({
   play?: boolean;
   duration?: number;
   delay?: number;
-  badge?: boolean;
   className?: string;
 }) {
   const mv = useProgress({ progress, play, duration, delay });
@@ -378,7 +345,6 @@ export function GuruBubble({
           G
         </span>
         <span className="text-xs font-semibold text-ink">Guru</span>
-        {badge && <ProviderChip provider="Claude" className="ml-auto" />}
       </div>
       <p className="relative m-0 text-[13px] leading-[1.5] text-ink-2">
         <span className="invisible">{text}</span>

@@ -1,6 +1,6 @@
 /*
  * Deterministic teaching content for the landing page. Everything here is hand-written and verified:
- * nothing is generated at runtime and nothing calls the real Python runner, the IDE or an AI model.
+ * nothing is generated at runtime and nothing calls the real Python runner or the IDE.
  */
 
 export type Subject = "python" | "html" | "css";

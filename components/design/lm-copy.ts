@@ -7,15 +7,6 @@ export const COPY = {
     { label: "Guru", href: "#guru" },
     { label: "FAQ", href: "#faq" },
   ],
-  trust: {
-    label: "Powered by",
-    items: [
-      { name: "Gemini", role: "builds your lessons and quizzes" },
-      { name: "Claude", role: "Guru, your tutor" },
-      { name: "Groq", role: "instant tips" },
-      { name: "Supabase", role: "your account and files" },
-    ],
-  },
   problem: {
     eyebrow: "The problem",
     lead: "You have the notes. You don't know what you don't know.",
@@ -73,7 +64,7 @@ export const COPY = {
       },
       {
         q: "Is my material private?",
-        a: "It's stored in your own Supabase account and protected by row-level security.",
+        a: "It's stored in your own private account and protected by row-level security.",
       },
     ],
   },

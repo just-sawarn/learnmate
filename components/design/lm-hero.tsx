@@ -31,7 +31,6 @@ import {
   Meter,
   PageChip,
   PdfIcon,
-  ProviderChip,
   ScaledStage,
   SPRING,
   StatusPill,
@@ -301,7 +300,7 @@ function PlanBanner() {
   );
 }
 
-function GroqTip({ text }: { text: string }) {
+function QuickTip({ text }: { text: string }) {
   return (
     <motion.div
       className="flex h-[22px] items-center gap-1.5 rounded-full border border-line bg-surface-2 px-2.5 text-xs text-ink-2"
@@ -310,7 +309,7 @@ function GroqTip({ text }: { text: string }) {
       exit={{ opacity: 0, y: -4 }}
     >
       <Zap size={11} className="fill-ink text-ink" aria-hidden="true" />
-      <span className="font-semibold text-ink">Groq</span> {text}
+      <span className="font-semibold text-ink">Tip</span> {text}
       <span className="ml-auto font-mono text-lm-muted">0.4s</span>
     </motion.div>
   );
@@ -502,7 +501,7 @@ function UploadScene({ t }: { t: Clock }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
             >
-              <ProviderChip provider="Gemini" />
+              <span className="text-xs font-medium text-ink-2">Reading…</span>
             </motion.span>
           )}
         </AnimatePresence>
@@ -694,7 +693,7 @@ function GuruScene({ t }: { t: Clock }) {
         output="1 2 3 4"
         bug
         bugVisible={a >= 1}
-        tip={a === 2 ? <GroqTip key="tip" text="range(1, 5) starts at 1, not 0" /> : null}
+        tip={a === 2 ? <QuickTip key="tip" text="range(1, 5) starts at 1, not 0" /> : null}
       />
     </Layer>
   );
@@ -725,10 +724,8 @@ function FixedScene({ t }: { t: Clock }) {
 }
 
 const SCENE_VIEWS = [UploadScene, TopicsScene, LessonLayer, CheckpointScene, GuruScene, FixedScene];
-const PROVIDERS = ["Gemini", "Gemini", "Gemini", null, "Claude", "Claude"];
 
-function AppBar({ index }: { index: number }) {
-  const provider = PROVIDERS[index];
+function AppBar() {
   return (
     <div className="absolute inset-x-0 top-0 flex h-9 items-center gap-2 border-b border-line bg-surface px-4">
       <RohmbicMark className="h-[18px] text-ink" />
@@ -737,20 +734,7 @@ function AppBar({ index }: { index: number }) {
       <span className="mx-auto font-mono text-xs text-lm-muted">
         python-loops-lists.pdf › Loops
       </span>
-      <div className="flex w-[70px] justify-end">
-        <AnimatePresence mode="popLayout" initial={false}>
-          {provider && (
-            <motion.span
-              key={provider}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-            >
-              <ProviderChip provider={provider} />
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </div>
+      <div className="w-[70px]" />
     </div>
   );
 }
@@ -799,7 +783,6 @@ function HeroDemo() {
   );
   const finalClock = useMotionValue<number>(SCENES[SCENES.length - 1].duration);
   const View = SCENE_VIEWS[index];
-  const shown = reduced ? SCENES.length - 1 : index;
   void wrapped;
 
   return (
@@ -817,7 +800,7 @@ function HeroDemo() {
             className="h-[442px] w-[762px]"
             bodyClassName="relative h-[404px] w-[760px] bg-bg"
           >
-            <AppBar index={shown} />
+            <AppBar />
             {reduced ? (
               <FixedScene t={finalClock} />
             ) : (
@@ -887,7 +870,7 @@ export function LmHero({
   return (
     <section
       aria-labelledby="hero-title"
-      className="relative px-4 pt-6 pb-12 sm:px-6 sm:pt-10 lg:pb-[84px]"
+      className="relative px-4 pt-6 pb-10 sm:px-6 sm:pt-10 lg:pb-14"
     >
       <div
         aria-hidden="true"
@@ -905,7 +888,7 @@ export function LmHero({
             variants={reveal}
             className="mb-6 inline-flex max-w-full items-center rounded-full border border-line bg-surface px-3.5 py-1.5 text-[13px] text-ink-2 shadow-raised"
           >
-            Built for Equinox 2026 · Gemini × Claude × Groq
+            Learn by doing, with a tutor that asks first
           </motion.p>
           <h1
             id="hero-title"

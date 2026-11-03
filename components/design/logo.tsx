@@ -62,9 +62,9 @@ export function RohmbicWordmark({ className }: { className?: string }) {
 
 /** Horizontal lockup: symbol and wordmark at the same height. Purely presentational. */
 export function Logo({ className, size = "md" }: { className?: string; size?: "md" | "lg" }) {
-  const h = size === "lg" ? "h-9" : "h-6";
+  const h = size === "lg" ? "h-9" : "h-[1.15rem] sm:h-6";
   return (
-    <span className={cn("inline-flex items-center gap-2.5", className)}>
+    <span className={cn("inline-flex items-center gap-2 sm:gap-2.5", className)}>
       <RohmbicMark className={h} />
       <RohmbicWordmark className={h} />
       <span className="sr-only">rohmbic</span>

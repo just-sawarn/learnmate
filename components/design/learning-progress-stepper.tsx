@@ -53,7 +53,7 @@ export function LearningProgressStepper({ progress, active, onSelect }: StepperP
             const current = i === active;
             const Icon = stage.icon;
             return (
-              <li key={stage.id} className="flex-1 basis-0" style={{ minWidth: "4.5rem" }}>
+              <li key={stage.id} className="flex-1 basis-0" style={{ minWidth: "4rem" }}>
                 <button
                   type="button"
                   data-step
