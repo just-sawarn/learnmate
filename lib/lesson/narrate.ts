@@ -9,8 +9,8 @@ import type { Database, Json } from "@/lib/supabase/types";
 type Supabase = SupabaseClient<Database>;
 
 export const NARRATION_BUCKET = "narration";
-// ElevenLabs plans allow only a few simultaneous requests.
-const CONCURRENCY = 2;
+// Paid ElevenLabs plans allow three simultaneous requests.
+const CONCURRENCY = 3;
 
 export interface NarrationResult {
   script: LessonScript;
@@ -58,6 +58,8 @@ export async function recordNarration(
   userId: string,
   topicId: string,
   uiLang: "en" | "hi",
+  /** Record only these scenes (by position). The player asks for the first scenes first, so playback can start sooner. */
+  only?: number[],
 ): Promise<NarrationResult> {
   const { data: row } = await supabase
     .from("lessons")
@@ -91,7 +93,7 @@ export async function recordNarration(
   const voice = wantedVoice();
   const todo = script.scenes
     .map((scene, index) => ({ scene, index }))
-    .filter(({ scene }) => needsRecording(scene));
+    .filter(({ scene, index }) => needsRecording(scene) && (!only || only.includes(index)));
   const recordOne = async ({ scene, index }: (typeof todo)[number]) => {
     // Upgrading a recording to the new voice never falls back to a different one; a missing recording may.
     const rec = await synthesizeNarration(scene.narration, { allowFallback: !scene.audio });

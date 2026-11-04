@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Loader2, Monitor, Moon, PlayCircle, Sun, Trash2 } from "lucide-react";
+import { Download, Loader2, Moon, PlayCircle, Sun, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
@@ -148,12 +148,11 @@ export function SettingsView({
       <Section title="Appearance">
         <Segmented
           label="Theme"
-          value={mounted ? ((theme as "light" | "dark" | "system" | undefined) ?? "system") : null}
+          value={mounted ? ((theme as "light" | "dark" | undefined) ?? "light") : null}
           onChange={setTheme}
           options={[
             { id: "light", label: "Light", icon: <Sun className="h-4 w-4" /> },
             { id: "dark", label: "Dark", icon: <Moon className="h-4 w-4" /> },
-            { id: "system", label: "System", icon: <Monitor className="h-4 w-4" /> },
           ]}
         />
       </Section>

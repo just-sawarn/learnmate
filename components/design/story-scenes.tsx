@@ -313,7 +313,6 @@ function QuizScene({ p }: { p: number }) {
       >
         <span className="font-medium">Not quite.</span> The stop value is never included, so{" "}
         <code className="font-mono">range(1, 5)</code> ends at 4.{" "}
-        <Chip className="ml-1">Source: page 5</Chip>
       </div>
       <div
         className="flex items-center gap-2.5 rounded-lg border border-warning/40 bg-warning/10 p-2.5 @xl:p-3.5"

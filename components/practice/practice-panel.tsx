@@ -3,7 +3,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Check, Loader2, PartyPopper, RotateCcw, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { PageChip } from "@/components/source/source-context";
 import { Button } from "@/components/ui/button";
 import { ProviderBadge } from "@/components/ui/provider-badge";
 import { checkCloze } from "@/lib/practice/grade";
@@ -256,9 +255,6 @@ function Question({
         {result && (
           <>
             <Verdict result={result} />
-            <p className="text-xs text-muted-foreground">
-              Source: <PageChip page={q.page} />
-            </p>
           </>
         )}
       </div>
@@ -300,9 +296,6 @@ function Question({
         {result && (
           <>
             <Verdict result={result} />
-            <p className="text-xs text-muted-foreground">
-              Source: <PageChip page={q.page} />
-            </p>
           </>
         )}
       </div>
@@ -367,9 +360,6 @@ function Question({
             </p>
             {item.modelAnswer}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Source: <PageChip page={q.page} />
-          </p>
         </>
       )}
     </div>

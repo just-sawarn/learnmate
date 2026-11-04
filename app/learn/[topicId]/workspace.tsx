@@ -16,7 +16,6 @@ import { Celebrate } from "@/components/ui/celebrate";
 import { SourceProvider } from "@/components/source/source-context";
 import { GuruPanel } from "@/components/tutor/guru-panel";
 import { Button } from "@/components/ui/button";
-import { ProviderBadge } from "@/components/ui/provider-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LangToggle } from "@/components/ui/lang-toggle";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -27,6 +26,7 @@ import { lessonScriptSchema, type LessonScript, type Scene } from "@/lib/schemas
 import type { TutorContext } from "@/lib/schemas/tutor";
 import type { Json } from "@/lib/supabase/types";
 import { createClient } from "@/lib/supabase/browser";
+import { preloadPython } from "@/lib/runners/python";
 
 export interface LearnExercise extends IdeExercise {
   id: string;
@@ -44,13 +44,15 @@ interface Props {
   kind: "programming" | "concepts";
   practice: PracticeQuestion[];
   practiceDoneIds: string[];
+  /** The next topic in the course, for the end-of-lesson "Next lesson" button. */
+  nextTopic: { id: string; name: string } | null;
   uiLang: "en" | "hi";
 }
 
 type LessonState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "recording"; script: LessonScript; voice?: string }
+  | { status: "recording"; script: LessonScript }
   | { status: "ready"; script: LessonScript; audioUrls: Record<string, string> };
 
 export function LearnWorkspace({
@@ -63,6 +65,7 @@ export function LearnWorkspace({
   kind,
   practice,
   practiceDoneIds,
+  nextTopic,
   uiLang,
 }: Props) {
   const concepts = kind === "concepts";
@@ -89,13 +92,18 @@ export function LearnWorkspace({
 
   const exercise = exercises.find((e) => e.id === activeId) ?? null;
 
+  // Start loading the Python engine now (in parallel with writing the lesson), so traced scenes don't wait for it later.
+  useEffect(() => {
+    if (kind === "programming") preloadPython();
+  }, [kind]);
+
   useEffect(() => {
     const controller = new AbortController();
-    const post = async (url: string) => {
+    const post = async (url: string, extra: Record<string, unknown> = {}) => {
       const res = await fetch(url, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ topicId: topic.id, uiLang }),
+        body: JSON.stringify({ topicId: topic.id, uiLang, ...extra }),
         signal: controller.signal,
       });
       const data = (await res.json()) as {
@@ -126,21 +134,59 @@ export function LearnWorkspace({
       if (!lessonRes.ok || !lessonRes.script.success)
         throw new Error(lessonRes.error ?? "The lesson wasn't usable.");
       let script = lessonRes.script.data;
-      // Record scenes with no audio, and re-record ones made in an older voice when a new voice is configured.
+
+      // Narration is recorded in the background, the first two scenes first, so the lesson can start in a couple of
+      // seconds instead of waiting for every scene. Scenes with no audio yet (or recorded in an older voice) are the
+      // ones to record; the rest arrive while the lesson plays.
       const wanted = lessonRes.narrationVoice;
       const stale = (sc: LessonScript["scenes"][number]) =>
         !sc.audio || (wanted?.startsWith("elevenlabs") && sc.audio.voice !== wanted);
-      if (script.scenes.some(stale)) {
-        setLesson({ status: "recording", script, voice: wanted });
+      const todo = script.scenes.flatMap((sc, i) => (stale(sc) ? [i] : []));
+      if (todo.length > 0) {
+        setLesson({ status: "recording", script });
         try {
-          const voiced = await post("/api/narration");
-          if (voiced.ok && voiced.script.success) script = voiced.script.data;
+          const first = await post("/api/narration", { scenes: todo.slice(0, 2) });
+          if (first.ok && first.script.success) script = first.script.data;
         } catch (e) {
           if (e instanceof DOMException && e.name === "AbortError") throw e;
           // No recording: the stage falls back to the browser's voice, so the lesson still plays.
         }
       }
-      setLesson({ status: "ready", script, audioUrls: await sign(script) });
+      let audioUrls = await sign(script);
+      setLesson({ status: "ready", script, audioUrls });
+
+      // The remaining scenes, a few at a time and one request after another (each updates the saved lesson).
+      // If the first scenes could not be recorded, stop: the voice provider is unavailable and retrying wastes time.
+      const recordedFirst =
+        todo.length === 0 || todo.slice(0, 2).some((i) => !!script.scenes[i]?.audio);
+      if (recordedFirst) {
+        const rest = todo.slice(2);
+        for (let k = 0; k < rest.length; k += 4) {
+          try {
+            const more = await post("/api/narration", { scenes: rest.slice(k, k + 4) });
+            if (!more.ok || !more.script.success) break;
+            script = more.script.data;
+            audioUrls = { ...audioUrls, ...(await sign(script)) };
+            const next = { script, audioUrls };
+            setLesson((prev) => (prev.status === "ready" ? { status: "ready", ...next } : prev));
+          } catch (e) {
+            if (e instanceof DOMException && e.name === "AbortError") return;
+            break;
+          }
+        }
+      }
+
+      // Get the next lesson written in the background, so "Next lesson" opens straight away.
+      if (nextTopic) {
+        setTimeout(() => {
+          if (controller.signal.aborted) return;
+          fetch("/api/lesson", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ topicId: nextTopic.id, uiLang }),
+          }).catch(() => undefined);
+        }, 3000);
+      }
     })().catch((e: unknown) => {
       if (e instanceof DOMException && e.name === "AbortError") return;
       setLesson({
@@ -149,7 +195,7 @@ export function LearnWorkspace({
       });
     });
     return () => controller.abort();
-  }, [topic.id, uiLang, attempt]);
+  }, [topic.id, uiLang, attempt, nextTopic]);
 
   const onCheckpoint = useCallback((exerciseId: string) => {
     setActiveId(exerciseId);
@@ -279,125 +325,114 @@ export function LearnWorkspace({
         </header>
 
         <div className="flex min-h-0 flex-1">
-          <section className="min-w-0 flex-1 space-y-4 overflow-y-auto p-4" aria-label="Lesson">
-            {lesson.status === "loading" && (
-              <div className="space-y-3" aria-busy="true">
-                <Skeleton className="aspect-video w-full" />
-                <p className="text-sm text-muted-foreground">
-                  Claude is writing your lesson from your pages…
-                </p>
-              </div>
-            )}
-            {lesson.status === "error" && (
-              <div
-                role="alert"
-                className="space-y-3 rounded-xl border border-danger/40 bg-danger/10 p-4 text-sm"
-              >
-                <p>{lesson.message}</p>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setLesson({ status: "loading" });
-                    setAttempt((a) => a + 1);
-                  }}
+          <section className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6" aria-label="Lesson">
+            <div className="mx-auto w-full max-w-5xl space-y-5">
+              {(lesson.status === "loading" || lesson.status === "recording") && (
+                <div
+                  className="mx-auto w-full space-y-3"
+                  style={{ maxWidth: "min(100%, calc((100vh - 13.5rem) * 16 / 9))" }}
+                  aria-busy="true"
                 >
-                  <RefreshCw className="h-4 w-4" /> Try again
-                </Button>
-              </div>
-            )}
-            {lesson.status === "recording" && (
-              <div className="space-y-3" aria-busy="true">
-                <Skeleton className="aspect-video w-full" />
-                <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <ProviderBadge
-                    provider={lesson.voice?.startsWith("elevenlabs") ? "elevenlabs" : "gemini"}
-                    note="voice"
-                  />
-                  Recording the narration for &ldquo;{lesson.script.title}&rdquo;… (first time only)
-                </p>
-              </div>
-            )}
-            {lesson.status === "ready" && (
-              <>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <ProviderBadge
-                    provider={lesson.script.directedBy ?? "gemini"}
-                    note={
-                      lesson.script.directedBy === "gemini" ? "lesson script" : "motion director"
-                    }
-                  />
-                  <span>{lesson.script.title}</span>
-                  {lesson.script.scenes
-                    .find((sc) => sc.audio)
-                    ?.audio?.voice?.startsWith("elevenlabs") && (
-                    <ProviderBadge provider="elevenlabs" note="narration" />
-                  )}
+                  <Skeleton className="aspect-video w-full rounded-2xl" />
+                  <p className="text-center text-sm text-muted-foreground">
+                    {lesson.status === "loading"
+                      ? "Writing your lesson from your pages…"
+                      : "Getting the narration ready…"}
+                  </p>
                 </div>
+              )}
+              {lesson.status === "error" && (
+                <div
+                  role="alert"
+                  className="space-y-3 rounded-xl border border-danger/40 bg-danger/10 p-4 text-sm"
+                >
+                  <p>{lesson.message}</p>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setLesson({ status: "loading" });
+                      setAttempt((a) => a + 1);
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4" /> Try again
+                  </Button>
+                </div>
+              )}
+              {lesson.status === "ready" && (
                 <LessonStage
                   script={lesson.script}
                   audioUrls={lesson.audioUrls}
                   lang={uiLang}
                   onCheckpoint={onCheckpoint}
                   onSceneChange={onSceneChange}
+                  nextTopic={nextTopic}
+                  courseHref={`/course/${course.id}`}
+                  afterHint={
+                    concepts
+                      ? "Now try the practice questions on the right."
+                      : exercises.length > 0
+                        ? "Now try the exercise in the editor on the right."
+                        : "Nicely done."
+                  }
                 />
-              </>
-            )}
-            {planUpdate && (
-              <div
-                role="status"
-                className="flex flex-wrap items-center gap-3 rounded-xl border border-success/40 bg-success/10 p-3 text-sm"
-              >
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
-                <p className="flex-1">
-                  <span className="font-medium">Plan v{planUpdate.version} is ready. </span>
-                  {planUpdate.summary}
-                </p>
-                <Link href={`/course/${course.id}`}>
-                  <Button size="sm" variant="outline">
-                    See the plan
-                  </Button>
-                </Link>
-              </div>
-            )}
-            {concepts && practice.length > 0 && (
-              <div className="space-y-2">
-                <h2 className="text-sm font-semibold">Practice</h2>
-                <button
-                  onClick={() => {
-                    setPracticeStart(null);
-                    setIdeOpen(true);
-                  }}
-                  className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm hover:bg-muted"
+              )}
+              {planUpdate && (
+                <div
+                  role="status"
+                  className="flex flex-wrap items-center gap-3 rounded-xl border border-success/40 bg-success/10 p-3 text-sm"
                 >
-                  {practiceDone.size >= practice.length && (
-                    <CheckCircle2 className="h-4 w-4 text-success" />
-                  )}
-                  Practice questions · {practice.filter((p) => practiceDone.has(p.id)).length}/
-                  {practice.length} done
-                </button>
-              </div>
-            )}
-            {!concepts && exercises.length > 0 && (
-              <div className="space-y-2">
-                <h2 className="text-sm font-semibold">Practice</h2>
-                <div className="flex flex-wrap gap-2">
-                  {exercises.map((e, i) => (
-                    <button
-                      key={e.id}
-                      onClick={() => {
-                        setActiveId(e.id);
-                        setIdeOpen(true);
-                      }}
-                      aria-pressed={e.id === activeId}
-                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm ${e.id === activeId ? "border-primary bg-accent" : "hover:bg-muted"}`}
-                    >
-                      {passed.has(e.id) && <CheckCircle2 className="h-4 w-4 text-success" />}
-                      Exercise {i + 1} · {LANGUAGE_LABELS[e.language]}
-                    </button>
-                  ))}
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+                  <p className="flex-1">
+                    <span className="font-medium">Plan v{planUpdate.version} is ready. </span>
+                    {planUpdate.summary}
+                  </p>
+                  <Link href={`/course/${course.id}`}>
+                    <Button size="sm" variant="outline">
+                      See the plan
+                    </Button>
+                  </Link>
                 </div>
-              </div>
-            )}
+              )}
+              {concepts && practice.length > 0 && (
+                <div className="space-y-2">
+                  <h2 className="text-sm font-semibold">Practice</h2>
+                  <button
+                    onClick={() => {
+                      setPracticeStart(null);
+                      setIdeOpen(true);
+                    }}
+                    className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm hover:bg-muted"
+                  >
+                    {practiceDone.size >= practice.length && (
+                      <CheckCircle2 className="h-4 w-4 text-success" />
+                    )}
+                    Practice questions · {practice.filter((p) => practiceDone.has(p.id)).length}/
+                    {practice.length} done
+                  </button>
+                </div>
+              )}
+              {!concepts && exercises.length > 0 && (
+                <div className="space-y-2">
+                  <h2 className="text-sm font-semibold">Practice</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {exercises.map((e, i) => (
+                      <button
+                        key={e.id}
+                        onClick={() => {
+                          setActiveId(e.id);
+                          setIdeOpen(true);
+                        }}
+                        aria-pressed={e.id === activeId}
+                        className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm ${e.id === activeId ? "border-primary bg-accent" : "hover:bg-muted"}`}
+                      >
+                        {passed.has(e.id) && <CheckCircle2 className="h-4 w-4 text-success" />}
+                        Exercise {i + 1} · {LANGUAGE_LABELS[e.language]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </section>
 
           <motion.aside

@@ -57,10 +57,11 @@ test("demo path: quiz -> plan v1 -> lesson -> checkpoint -> IDE fail then pass -
     const wrong = loopTopics.has(q.topicId);
     const pick = wrong ? (q.correctIndex + 1) % 4 : q.correctIndex;
     await page.getByRole("radio").nth(pick).click();
-    await expect(page.getByText("Groq").first()).toBeVisible(); // instant feedback badge
-    await page
-      .getByRole("button", { name: i === questions.length - 1 ? "Finish quiz" : "Next question" })
-      .click();
+    const advance = page.getByRole("button", {
+      name: i === questions.length - 1 ? "Finish quiz" : "Next question",
+    });
+    await expect(advance).toBeEnabled({ timeout: 60_000 }); // the instant feedback has arrived
+    await advance.click();
   }
 
   // Plan v1 ranks a loop topic first
@@ -80,7 +81,7 @@ test("demo path: quiz -> plan v1 -> lesson -> checkpoint -> IDE fail then pass -
   await page.waitForURL("**/learn/**");
   const timeline = page.locator('[role="list"] > button');
   await expect(timeline.first()).toBeVisible({ timeout: 180_000 });
-  await expect(page.getByText("Source:").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start lesson", exact: true })).toBeVisible();
   // Jumping to a scene starts it; the Checkpoint pauses once its narration ends and opens the editor.
   await timeline.last().click();
   await expect(page.getByRole("complementary", { name: "Code editor" })).toBeVisible({
@@ -99,7 +100,8 @@ test("demo path: quiz -> plan v1 -> lesson -> checkpoint -> IDE fail then pass -
   await page.getByRole("button", { name: "Open Guru" }).click();
   const guru = page.getByRole("complementary", { name: "Guru tutor" });
   await guru.getByRole("button", { name: /Hint 1\/3/ }).click();
-  await expect(guru.getByText("Claude").first()).toBeVisible({ timeout: 90_000 });
+  // The provider chips no longer render, so wait for the hint itself to show up as a message.
+  await expect(guru.locator("ul > li").first()).toBeVisible({ timeout: 90_000 });
   await guru.getByLabel("Ask Guru").fill("why does range stop before 5?");
   await guru.getByRole("button", { name: "Send" }).click();
   await expect(guru.getByRole("button", { name: /^p\. \d+$/ }).first()).toBeVisible({

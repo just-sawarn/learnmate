@@ -15,7 +15,7 @@ export default async function LearnPage({ params }: PageProps<"/learn/[topicId]"
 
   const { data: topic } = await supabase
     .from("topics")
-    .select("id,course_id,name,summary,pages")
+    .select("id,course_id,name,summary,pages,position")
     .eq("id", topicId)
     .maybeSingle();
   if (!topic) notFound();
@@ -38,6 +38,14 @@ export default async function LearnPage({ params }: PageProps<"/learn/[topicId]"
     supabase.from("profiles").select("ui_lang").eq("id", user.id).maybeSingle(),
   ]);
   if (!course) notFound();
+  const { data: next } = await supabase
+    .from("topics")
+    .select("id,name")
+    .eq("course_id", topic.course_id)
+    .gt("position", topic.position)
+    .order("position")
+    .limit(1)
+    .maybeSingle();
 
   const exerciseIds = (exerciseRows ?? []).map((e) => e.id);
   const { data: passedRuns } = exerciseIds.length
@@ -88,6 +96,7 @@ export default async function LearnPage({ params }: PageProps<"/learn/[topicId]"
       passedExerciseIds={[...new Set((passedRuns ?? []).map((r) => r.exercise_id))]}
       kind={course.kind}
       practice={practice}
+      nextTopic={next ?? null}
       practiceDoneIds={[...new Set((doneRows ?? []).map((r) => r.item_id))]}
       uiLang={profile?.ui_lang ?? "en"}
     />

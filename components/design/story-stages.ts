@@ -135,7 +135,7 @@ export const STORY_STEPS = [
   },
   {
     title: "Watch it come alive",
-    body: "Each topic becomes an animated lesson: code types in, variables tick, every scene shows its source page.",
+    body: "Each topic becomes an animated lesson: code types in, variables tick, every idea is shown as it is spoken.",
   },
   {
     title: "Try it yourself",

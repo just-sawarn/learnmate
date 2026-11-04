@@ -1,10 +1,9 @@
 "use client";
 
-import { Play, RotateCcw, Volume2, VolumeX } from "lucide-react";
+import { ArrowRight, CheckCircle2, Pause, Play, RotateCcw } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LessonPlayerFrame } from "@/components/design/lesson-player-frame";
-import { PageChip } from "@/components/source/source-context";
-import { ProviderBadge } from "@/components/ui/provider-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   pauseSpeaking,
@@ -38,6 +37,11 @@ interface Props {
   /** Called when playback reaches a Checkpoint; the lesson pauses and the IDE opens. */
   onCheckpoint: (exerciseId: string) => void;
   onSceneChange: (index: number, scene: Scene) => void;
+  /** The next topic in the course, if any: offered when the lesson ends. */
+  nextTopic?: { id: string; name: string } | null;
+  courseHref: string;
+  /** What to tell the student to do now that the lesson has finished, e.g. "Try the exercise on the right". */
+  afterHint?: string;
 }
 
 /** Fills each VariableTracker scene with a real execution trace. Scenes that can't be traced are dropped. */
@@ -63,12 +67,23 @@ async function withTraces(scenes: Scene[]): Promise<Scene[]> {
  * master of that clock. With a recording, frames follow `audio.currentTime`, so motion, captions and trace
  * steps land exactly where the voice is. Without one, the browser's voice speaks on a timer.
  */
-export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChange }: Props) {
+export function LessonStage({
+  script,
+  audioUrls,
+  lang,
+  onCheckpoint,
+  onSceneChange,
+  nextTopic,
+  courseHref,
+  afterHint,
+}: Props) {
   const [scenes, setScenes] = useState<Scene[] | null>(null);
   const [index, setIndex] = useState(0);
   const [frame, setFrame] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [started, setStarted] = useState(false);
+  /** The lesson has played to its checkpoint or its last scene: the end-of-lesson card shows. */
+  const [ended, setEnded] = useState(false);
   const [voiceOn, setVoiceOn] = useState(true);
   // The Settings page can turn the voice off by default.
   useEffect(() => {
@@ -104,6 +119,22 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
   });
 
   useEffect(() => {
+    // Narration can arrive after the lesson is already playing (the first scenes are recorded first). Those updates
+    // only reach scenes that haven't started, so the scene on screen never changes length underneath the student.
+    if (scenesRef.current.length > 0) {
+      const key = (x: Scene) => `${x.type}|${x.narration}`;
+      setScenes((prev) =>
+        prev
+          ? prev.map((sc, i) => {
+              const fresh = script.scenes.find((x) => key(x) === key(sc));
+              const locked = clock.current.started && i <= clock.current.index;
+              if (!fresh?.audio || locked || sc.audio?.path === fresh.audio.path) return sc;
+              return { ...sc, audio: fresh.audio };
+            })
+          : prev,
+      );
+      return;
+    }
     let cancelled = false;
     void withTraces(script.scenes).then((prepared) => {
       if (!cancelled) setScenes(prepared);
@@ -135,7 +166,7 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
     return () => observer.disconnect();
   }, [scenes]);
 
-  // One audio element for the whole lesson (so a single user gesture unlocks it), plus warm-up of every recording.
+  // One audio element for the whole lesson (so a single user gesture unlocks it).
   useEffect(() => {
     const a = new Audio();
     a.preload = "auto";
@@ -143,19 +174,31 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
       clock.current.endedAt = performance.now();
     });
     audio.current = a;
-    const warm = Object.values(audioUrls).map((url) => {
-      const w = new Audio();
-      w.preload = "auto";
-      w.src = url;
-      return w;
-    });
     return () => {
       a.pause();
       a.src = "";
-      warm.forEach((w) => (w.src = ""));
       stopSpeaking();
     };
+  }, []);
+
+  // Warm the browser's cache with every recording as its URL arrives, so scenes start without a wait.
+  const warmed = useRef(new Map<string, HTMLAudioElement>());
+  useEffect(() => {
+    for (const url of Object.values(audioUrls)) {
+      if (warmed.current.has(url)) continue;
+      const w = new Audio();
+      w.preload = "auto";
+      w.src = url;
+      warmed.current.set(url, w);
+    }
   }, [audioUrls]);
+  useEffect(() => {
+    const cache = warmed.current;
+    return () => {
+      cache.forEach((w) => (w.src = ""));
+      cache.clear();
+    };
+  }, []);
 
   const urlFor = useCallback(
     (scene: Scene) => (scene.audio ? audioUrls[scene.audio.path] : undefined),
@@ -197,6 +240,7 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
       t >= spokenFor + CHECKPOINT_LINGER
     ) {
       c.checkpointFired = true;
+      setEnded(true);
       setPlaying(false);
       audio.current?.pause();
       stopSpeaking();
@@ -210,6 +254,7 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
       if (c.index < scenesRef.current.length - 1) {
         beginRef.current(c.index + 1, true);
       } else {
+        setEnded(true);
         setPlaying(false);
         stopSpeaking();
       }
@@ -235,6 +280,7 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
       c.measured = null;
       c.voiceToken++;
       setLive(null);
+      setEnded(false);
       c.checkpointFired = false;
       c.started = true;
       setStarted(true);
@@ -312,6 +358,7 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
 
   const play = useCallback(() => {
     const c = clock.current;
+    setEnded(false);
     const last = scenesRef.current.length - 1;
     if (!c.started || (c.index === last && c.pausedAt >= sceneSeconds(scenesRef.current[last]))) {
       beginScene(0, true);
@@ -342,9 +389,7 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
     return (
       <div className="space-y-3" aria-busy="true" aria-label="Preparing lesson">
         <Skeleton className="aspect-video w-full" />
-        <p className="text-sm text-muted-foreground">
-          Running the lesson code to record real variable traces…
-        </p>
+        <p className="text-sm text-muted-foreground">Getting your lesson ready…</p>
       </div>
     );
   }
@@ -367,97 +412,125 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
       speechFrames = live.speechFrames ?? speechFrames;
     }
   }
-  const totalFrames = timed.reduce((n, t) => n + t.frames, 0);
-  const progress =
-    totalFrames > 0
-      ? ((current?.from ?? 0) + Math.min(shownFrame, current?.frames ?? 0)) / totalFrames
-      : 0;
+  const segments = timed.map((t, i) => ({
+    weight: t.frames,
+    fill: i < index ? 1 : i === index ? Math.min(1, shownFrame / Math.max(1, t.frames)) : 0,
+    label: t.scene.type,
+  }));
+  const toggleVoice = () => {
+    const next = !voiceOn;
+    setVoiceOn(next);
+    voiceRef.current = next;
+    if (audio.current) audio.current.muted = !next;
+    if (!next) stopSpeaking();
+  };
+  const restart = () => beginScene(0, true);
+  const bigButton =
+    "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-transform hover:scale-[1.03] active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground";
+
+  let overlay: React.ReactNode = null;
+  if (ended) {
+    overlay = (
+      <div className="absolute inset-0 flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm">
+        <div className="w-full max-w-md space-y-4 rounded-2xl border bg-card p-6 text-center shadow-xl">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success/15 text-success">
+            <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
+          </span>
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold">Lesson complete</h2>
+            <p className="text-sm text-muted-foreground">{afterHint ?? "Nicely done."}</p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={restart}
+              className={cn(bigButton, "border bg-card hover:bg-muted")}
+            >
+              <RotateCcw className="h-4 w-4" aria-hidden="true" /> Restart lesson
+            </button>
+            {nextTopic ? (
+              <Link
+                href={`/learn/${nextTopic.id}`}
+                className={cn(bigButton, "bg-primary text-primary-foreground")}
+              >
+                Next lesson <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            ) : (
+              <Link
+                href={courseHref}
+                className={cn(bigButton, "bg-primary text-primary-foreground")}
+              >
+                Back to the course <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            )}
+          </div>
+          {nextTopic && (
+            <p className="truncate text-xs text-muted-foreground">Up next: {nextTopic.name}</p>
+          )}
+        </div>
+      </div>
+    );
+  } else if (!started) {
+    overlay = (
+      <div className="absolute inset-0 flex items-center justify-center bg-black/5">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label="Start lesson"
+          className={cn(
+            bigButton,
+            "bg-primary px-7 py-3.5 text-base text-primary-foreground shadow-xl",
+          )}
+        >
+          <Play className="h-5 w-5" aria-hidden="true" /> Start lesson
+        </button>
+      </div>
+    );
+  } else if (!playing) {
+    overlay = (
+      <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
+        <span className="flex items-center gap-1.5 rounded-full bg-foreground/85 px-3.5 py-1.5 text-xs font-medium text-background shadow-lg">
+          <Pause className="h-3.5 w-3.5" aria-hidden="true" /> Paused. Click to resume
+        </span>
+      </div>
+    );
+  }
 
   return (
     <LessonPlayerFrame
       title={script.title}
-      progress={progress}
       playing={playing}
+      segments={segments}
+      current={index}
+      voiceOn={voiceOn}
       onPlayPause={toggle}
       onPrevious={() => go(index - 1)}
       onNext={() => go(index + 1)}
-      caption={
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <button
-              type="button"
-              onClick={() => go(index)}
-              aria-label="Replay scene"
-              className="rounded-lg border p-1.5 hover:bg-muted"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </button>
-            <span className="text-muted-foreground">
-              Scene {index + 1} of {timed.length}
-            </span>
-            {scene && (
-              <span className="flex items-center gap-1">
-                Source: <PageChip page={scene.page} />
-              </span>
-            )}
-            <div className="ml-auto flex items-center gap-2">
-              {recorded ? (
-                <ProviderBadge provider="gemini" note="voice" />
-              ) : (
-                <span className="text-xs text-muted-foreground">Browser voice</span>
-              )}
-              <button
-                type="button"
-                aria-pressed={voiceOn}
-                onClick={() => {
-                  const next = !voiceOn;
-                  setVoiceOn(next);
-                  voiceRef.current = next;
-                  if (audio.current) audio.current.muted = !next;
-                  if (!next) stopSpeaking();
-                }}
-                className="flex items-center gap-1 rounded-lg border px-2 py-1 text-xs hover:bg-muted"
-              >
-                {voiceOn ? (
-                  <Volume2 className="h-3.5 w-3.5" />
-                ) : (
-                  <VolumeX className="h-3.5 w-3.5" />
-                )}
-                Voice {voiceOn ? "on" : "off"}
-              </button>
-            </div>
-          </div>
-          <div role="list" className="flex gap-1" aria-label="Scenes">
-            {timed.map((t, i) => (
-              <button
-                key={i}
-                role="listitem"
-                title={`${i + 1}. ${t.scene.type} (p. ${t.scene.page})`}
-                onClick={() => go(i)}
-                className={cn(
-                  "h-2 rounded-full transition-colors",
-                  i === index ? "bg-primary" : "bg-muted hover:bg-primary/40",
-                )}
-                style={{ flex: t.frames }}
-              />
-            ))}
-          </div>
-        </div>
-      }
+      onRestart={restart}
+      onSeek={go}
+      onToggleVoice={toggleVoice}
+      overlay={overlay}
     >
       <div
         ref={frameBox}
         tabIndex={0}
         role="group"
-        aria-label="Animated lesson"
+        aria-label="Animated lesson. Space plays or pauses; arrow keys change scene."
+        onClick={() => !ended && started && toggle()}
         onKeyDown={(e) => {
           if (e.key === " ") {
             e.preventDefault();
             toggle();
+          } else if (e.key === "f" || e.key === "F") {
+            if (document.fullscreenElement) void document.exitFullscreen();
+            else e.currentTarget.closest("section")?.requestFullscreen?.();
           } else if (e.key === "ArrowRight") go(index + 1);
           else if (e.key === "ArrowLeft") go(index - 1);
         }}
-        className="relative h-full w-full overflow-hidden bg-[#fff8f0] outline-none focus-visible:outline-2 focus-visible:outline-primary"
+        className={cn(
+          "relative h-full w-full overflow-hidden bg-[#fff8f0] outline-none focus-visible:outline-2 focus-visible:outline-primary",
+          started && !ended && "cursor-pointer",
+        )}
       >
         <div
           style={{
@@ -485,18 +558,6 @@ export function LessonStage({ script, audioUrls, lang, onCheckpoint, onSceneChan
             </FrameProvider>
           )}
         </div>
-        {!playing && (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label={started ? "Resume lesson" : "Play lesson"}
-            className="absolute inset-0 flex items-center justify-center bg-black/10 transition-colors hover:bg-black/15"
-          >
-            <span className="flex h-20 w-20 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl">
-              <Play className="ml-1 h-9 w-9" />
-            </span>
-          </button>
-        )}
       </div>
     </LessonPlayerFrame>
   );

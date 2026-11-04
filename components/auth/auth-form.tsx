@@ -112,14 +112,6 @@ function Form({ mode }: { mode: Mode }) {
     setBusy(false);
   }
 
-  async function google() {
-    const { error } = await createClient().auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
-    if (error) setMessage(error.message);
-  }
-
   const signupStep2 = mode === "signup" && step === 2;
   const chip = (active: boolean) =>
     cn(
@@ -361,18 +353,6 @@ function Form({ mode }: { mode: Mode }) {
           </Button>
         </div>
       </form>
-      {!signupStep2 && (
-        <>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground" aria-hidden="true">
-            <span className="h-px flex-1 bg-border" />
-            or
-            <span className="h-px flex-1 bg-border" />
-          </div>
-          <Button variant="outline" className="w-full" onClick={google}>
-            Continue with Google
-          </Button>
-        </>
-      )}
       {message && (
         <p role="status" className="rounded-lg border bg-muted px-3 py-2 text-sm">
           {message}

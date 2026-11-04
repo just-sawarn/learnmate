@@ -1579,13 +1579,29 @@ body {
 }
 .lm-hero-glow {
   background:
-    radial-gradient(ellipse 55% 48% at 74% 38%, color-mix(in srgb, var(--brand-1) 34%, transparent), transparent 70%),
-    radial-gradient(ellipse 40% 40% at 8% 4%, color-mix(in srgb, var(--aurora-two) 40%, transparent), transparent 70%);
+    radial-gradient(
+      ellipse 55% 48% at 74% 38%,
+      color-mix(in srgb, var(--brand-1) 34%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 40% 40% at 8% 4%,
+      color-mix(in srgb, var(--aurora-two) 40%, transparent),
+      transparent 70%
+    );
 }
 .dark .lm-hero-glow {
   background:
-    radial-gradient(ellipse 55% 48% at 74% 38%, color-mix(in srgb, var(--brand-1) 14%, transparent), transparent 70%),
-    radial-gradient(ellipse 40% 40% at 8% 4%, color-mix(in srgb, #626b75 22%, transparent), transparent 70%);
+    radial-gradient(
+      ellipse 55% 48% at 74% 38%,
+      color-mix(in srgb, var(--brand-1) 14%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 40% 40% at 8% 4%,
+      color-mix(in srgb, #626b75 22%, transparent),
+      transparent 70%
+    );
 }
 .lm-caret {
   display: inline-block;
@@ -1678,8 +1694,8 @@ body {
 .lm-theme button,
 .lm-theme input {
   font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 .lm-theme .font-mono,
 .lm-theme pre,
@@ -1703,34 +1719,82 @@ body {
 }
 .lm-aura--beam::before {
   background:
-    radial-gradient(ellipse 60% 62% at 90% 24%, color-mix(in srgb, #c9b89f 78%, transparent), transparent 74%),
-    radial-gradient(ellipse 46% 52% at 4% 84%, color-mix(in srgb, #626b75 30%, transparent), transparent 74%);
+    radial-gradient(
+      ellipse 60% 62% at 90% 24%,
+      color-mix(in srgb, #c9b89f 78%, transparent),
+      transparent 74%
+    ),
+    radial-gradient(
+      ellipse 46% 52% at 4% 84%,
+      color-mix(in srgb, #626b75 30%, transparent),
+      transparent 74%
+    );
 }
 .lm-aura--slate::before {
   background:
-    radial-gradient(ellipse 56% 60% at 8% 28%, color-mix(in srgb, #626b75 34%, transparent), transparent 74%),
-    radial-gradient(ellipse 50% 54% at 94% 86%, color-mix(in srgb, #c9b89f 68%, transparent), transparent 74%);
+    radial-gradient(
+      ellipse 56% 60% at 8% 28%,
+      color-mix(in srgb, #626b75 34%, transparent),
+      transparent 74%
+    ),
+    radial-gradient(
+      ellipse 50% 54% at 94% 86%,
+      color-mix(in srgb, #c9b89f 68%, transparent),
+      transparent 74%
+    );
 }
 .dark .lm-aura--beam::before {
   background:
-    radial-gradient(ellipse 60% 62% at 90% 24%, color-mix(in srgb, #c9b89f 24%, transparent), transparent 74%),
-    radial-gradient(ellipse 46% 52% at 4% 84%, color-mix(in srgb, #626b75 36%, transparent), transparent 74%);
+    radial-gradient(
+      ellipse 60% 62% at 90% 24%,
+      color-mix(in srgb, #c9b89f 24%, transparent),
+      transparent 74%
+    ),
+    radial-gradient(
+      ellipse 46% 52% at 4% 84%,
+      color-mix(in srgb, #626b75 36%, transparent),
+      transparent 74%
+    );
 }
 .dark .lm-aura--slate::before {
   background:
-    radial-gradient(ellipse 56% 60% at 8% 28%, color-mix(in srgb, #626b75 42%, transparent), transparent 74%),
-    radial-gradient(ellipse 50% 54% at 94% 86%, color-mix(in srgb, #c9b89f 20%, transparent), transparent 74%);
+    radial-gradient(
+      ellipse 56% 60% at 8% 28%,
+      color-mix(in srgb, #626b75 42%, transparent),
+      transparent 74%
+    ),
+    radial-gradient(
+      ellipse 50% 54% at 94% 86%,
+      color-mix(in srgb, #c9b89f 20%, transparent),
+      transparent 74%
+    );
 }
 /* More presence behind the hero demo. */
 .lm-hero-glow {
   background:
-    radial-gradient(ellipse 62% 56% at 74% 38%, color-mix(in srgb, #c9b89f 85%, transparent), transparent 70%),
-    radial-gradient(ellipse 40% 40% at 6% 14%, color-mix(in srgb, #626b75 16%, transparent), transparent 70%);
+    radial-gradient(
+      ellipse 62% 56% at 74% 38%,
+      color-mix(in srgb, #c9b89f 85%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 40% 40% at 6% 14%,
+      color-mix(in srgb, #626b75 16%, transparent),
+      transparent 70%
+    );
 }
 .dark .lm-hero-glow {
   background:
-    radial-gradient(ellipse 62% 56% at 74% 38%, color-mix(in srgb, #c9b89f 30%, transparent), transparent 70%),
-    radial-gradient(ellipse 46% 46% at 4% 6%, color-mix(in srgb, #626b75 44%, transparent), transparent 70%);
+    radial-gradient(
+      ellipse 62% 56% at 74% 38%,
+      color-mix(in srgb, #c9b89f 30%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 46% 46% at 4% 6%,
+      color-mix(in srgb, #626b75 44%, transparent),
+      transparent 70%
+    );
 }
 
 /* ---------- FAQ rows: light up on hover, answer drops down ---------- */

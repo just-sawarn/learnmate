@@ -28,6 +28,7 @@ export function ScenesShowcase({
           lang="en"
           onCheckpoint={noop}
           onSceneChange={noop}
+          courseHref="/dashboard"
         />
       </main>
     </SourceProvider>

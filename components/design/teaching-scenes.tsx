@@ -841,7 +841,7 @@ export function LoopScene({ p, subject }: { p: number; subject: Subject }) {
     );
   const step = Math.min(8, Math.max(1, Math.floor(seg(p, 0.14, 0.97) * 8) + 1));
   return (
-    <SceneBody title="Loops: one lap at a time" aside={<Chip>Step {step}/8 · source page 2</Chip>}>
+    <SceneBody title="Loops: one lap at a time" aside={<Chip>Step {step}/8</Chip>}>
       <PythonExecutionVisualizer p={p} />
     </SceneBody>
   );

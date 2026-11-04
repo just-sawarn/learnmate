@@ -194,23 +194,6 @@ export function SceneFrame({
           {label}
         </div>
       </div>
-      <div
-        style={{
-          position: "absolute",
-          top: 24,
-          right: 44,
-          padding: "5px 16px",
-          borderRadius: 999,
-          background: PALETTE.card,
-          border: `1.5px solid ${PALETTE.border}`,
-          fontSize: 18,
-          fontWeight: 600,
-          color: PALETTE.ink,
-          opacity: enter,
-        }}
-      >
-        Source: page {page}
-      </div>
       <AbsoluteFill
         style={{
           padding: "84px 84px 214px",

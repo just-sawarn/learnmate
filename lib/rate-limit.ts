@@ -32,7 +32,7 @@ export const LIMITS = {
   account: { capacity: 4, refillPerSecond: 1 / 30 },
   grade: { capacity: 20, refillPerSecond: 0.5 },
   light: { capacity: 60, refillPerSecond: 2 },
-  narration: { capacity: 6, refillPerSecond: 1 / 20 },
+  narration: { capacity: 14, refillPerSecond: 1 / 10 },
 } satisfies Record<string, RateLimitConfig>;
 
 export function resetRateLimits(): void {

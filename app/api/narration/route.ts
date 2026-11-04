@@ -8,6 +8,8 @@ export const maxDuration = 120;
 const bodySchema = z.object({
   topicId: z.string().uuid(),
   uiLang: z.enum(["en", "hi"]).default("en"),
+  /** Scene positions to record now; omitted means every scene that still needs it. */
+  scenes: z.array(z.number().int().min(0).max(60)).max(60).optional(),
 });
 
 /** Records the lesson's narration (ElevenLabs when configured, else Gemini) so animation can follow the real voice. */
@@ -23,6 +25,7 @@ export async function POST(request: Request) {
       auth.user.id,
       parsed.data.topicId,
       parsed.data.uiLang,
+      parsed.data.scenes,
     );
     return NextResponse.json({
       ...result,
