@@ -385,6 +385,11 @@ export function LessonStage({
     [],
   );
 
+  // When the lesson finishes while in full screen, leave it, so the practice panel beside the lesson comes into view.
+  useEffect(() => {
+    if (ended && document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+  }, [ended]);
+
   if (!scenes) {
     return (
       <div className="space-y-3" aria-busy="true" aria-label="Preparing lesson">
