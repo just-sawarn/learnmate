@@ -177,9 +177,9 @@ export default async function DashboardPage() {
   return (
     <div className="dashboard-canvas min-h-screen">
       <SiteHeader />
-      <main className="relative mx-auto grid w-full max-w-5xl flex-1 items-start gap-8 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-[1fr_340px]">
-        <section className="min-w-0 space-y-6">
-          <Reveal className="dashboard-heading relative overflow-hidden rounded-3xl border bg-card/70 p-5 shadow-sm backdrop-blur sm:p-6">
+      <main className="relative mx-auto grid w-full max-w-5xl flex-1 items-start gap-6 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-[1fr_340px] lg:gap-8">
+        <section className="contents lg:block lg:min-w-0 lg:space-y-6">
+          <Reveal className="order-1 lg:order-none dashboard-heading relative overflow-hidden rounded-3xl border bg-card/70 p-5 shadow-sm backdrop-blur sm:p-6">
             <div className="dashboard-heading__glow" aria-hidden="true" />
             <div className="relative space-y-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -227,7 +227,7 @@ export default async function DashboardPage() {
           </Reveal>
 
           {next?.next ? (
-            <Card className="flex flex-col gap-4 border-primary/25 bg-accent/70 sm:flex-row sm:items-center">
+            <Card className="order-2 flex flex-col gap-4 border-primary/25 bg-accent/70 sm:flex-row sm:items-center lg:order-none">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
                 <Flame className="h-5 w-5" aria-hidden="true" />
               </span>
@@ -249,7 +249,7 @@ export default async function DashboardPage() {
             </Card>
           ) : (
             unquizzed && (
-              <Card className="flex flex-col gap-4 border-primary/25 bg-accent/70 sm:flex-row sm:items-center">
+              <Card className="order-2 flex flex-col gap-4 border-primary/25 bg-accent/70 sm:flex-row sm:items-center lg:order-none">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
                   <Sparkles className="h-5 w-5" aria-hidden="true" />
                 </span>
@@ -284,7 +284,7 @@ export default async function DashboardPage() {
           )}
 
           {o.courses.length === 0 ? (
-            <Card className="empty-course-state surface-sheen space-y-5 border-dashed px-6 py-10 shadow-none">
+            <Card className="order-4 lg:order-none empty-course-state surface-sheen space-y-5 border-dashed px-6 py-10 shadow-none">
               <div className="flex flex-col items-center gap-2 text-center">
                 <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent">
                   <BookOpen className="h-5 w-5" aria-hidden="true" />
@@ -310,7 +310,7 @@ export default async function DashboardPage() {
               </ol>
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className="order-4 space-y-3 lg:order-none">
               <h2 className="flex items-baseline gap-2 text-lg font-semibold">
                 Your courses
                 <span className="text-sm font-normal text-muted-foreground">
@@ -329,7 +329,7 @@ export default async function DashboardPage() {
         </section>
         <Reveal
           delay={0.1}
-          className="dashboard-upload-shell relative h-fit self-start lg:sticky lg:top-20"
+          className="dashboard-upload-shell relative order-3 h-fit self-start lg:sticky lg:top-20 lg:order-none"
         >
           <div className="dashboard-upload-shell__glow" aria-hidden="true" />
           <div className="relative">
