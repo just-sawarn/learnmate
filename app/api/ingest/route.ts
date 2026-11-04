@@ -75,12 +75,18 @@ export async function POST(request: Request) {
         if (body.kind === "pdf" && error instanceof IngestError) {
           await supabase.storage.from("materials").remove([body.storagePath]);
         }
+        const missingConfig =
+          error instanceof Error && error.message.startsWith("Invalid environment:")
+            ? error.message.replace(/^Invalid environment: ([^.]*)\..*$/, "$1")
+            : null;
         const message =
           error instanceof IngestError
             ? error.message
-            : error instanceof AiOutputError
-              ? "The AI returned something we couldn't use. Please try again."
-              : "Something went wrong while reading your material. Please try again.";
+            : missingConfig
+              ? `This server is missing settings it needs (${missingConfig}). Add them in the host's environment variables and redeploy. Open /api/health to see what is missing.`
+              : error instanceof AiOutputError
+                ? "The AI returned something we couldn't use. Please try again."
+                : "Something went wrong while reading your material. Please try again.";
         send({ t: "error", message });
       } finally {
         controller.close();

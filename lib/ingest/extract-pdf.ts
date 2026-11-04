@@ -1,5 +1,3 @@
-import { pathToFileURL } from "node:url";
-import path from "node:path";
 import { assertPageCount, assertUploadSize, IngestError, MIN_PAGE_CHARS } from "./limits";
 
 export interface ExtractedPdf {
@@ -15,13 +13,10 @@ let pdfjs: PdfJs | undefined;
 async function loadPdfJs(): Promise<PdfJs> {
   if (!pdfjs) {
     pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    // Build the path by hand: `import.meta.url` is rewritten by the bundler, and webpack refuses to statically resolve
-    // an ES module worker. The file is shipped with the deployment through outputFileTracingIncludes (next.config.ts).
-    const workerPath = path.join(
-      process.cwd(),
-      "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
-    );
-    pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).href;
+    // Hand pdf.js its worker code directly. Looking the worker file up by path depends on the folder the server was
+    // started from, which differs between hosts; importing it works wherever the package is installed.
+    const worker = await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
+    (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = worker;
   }
   return pdfjs;
 }

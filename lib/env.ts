@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 const serverSchema = z.object({
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  /** Only account deletion and scripts need it, so a host without it still runs everything else. */
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
   GEMINI_API_KEY: z.string().min(1),
   GEMINI_MODEL: z.string().min(1).default("gemini-3-flash-preview"),
   GEMINI_FALLBACK_MODEL: z.string().min(1).default("gemini-3.5-flash-lite"),
@@ -20,7 +21,8 @@ const serverSchema = z.object({
   GROQ_MODEL: z.string().min(1).default("openai/gpt-oss-20b"),
   /** Writes lesson scripts, which need a bigger model than the instant assists. */
   GROQ_LESSON_MODEL: z.string().min(1).default("openai/gpt-oss-120b"),
-  ONLINECOMPILER_API_KEY: z.string().min(1),
+  /** Only needed to run C, C++, Java, Go and Rust. */
+  ONLINECOMPILER_API_KEY: z.string().min(1).optional(),
   ONLINECOMPILER_URL: z.string().url().default("https://api.onlinecompiler.io"),
 });
 
@@ -64,7 +66,8 @@ export function serverEnv(): ServerEnv {
 
 /** Just the service-role key, so scripts and tests don't need every AI provider key configured. */
 export function serviceRoleKey(): string {
-  return parse(serverSchema.pick({ SUPABASE_SERVICE_ROLE_KEY: true }), {
+  const key = parse(z.object({ SUPABASE_SERVICE_ROLE_KEY: z.string().min(1) }), {
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   }).SUPABASE_SERVICE_ROLE_KEY;
+  return key;
 }

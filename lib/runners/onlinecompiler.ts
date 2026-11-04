@@ -58,6 +58,10 @@ export async function runOnCompiler(
   fetchImpl: typeof fetch = fetch,
 ): Promise<RunResult> {
   const env = serverEnv();
+  if (!env.ONLINECOMPILER_API_KEY)
+    throw new Error(
+      "Running this language needs ONLINECOMPILER_API_KEY, which isn't set on the server.",
+    );
   const url = `${env.ONLINECOMPILER_URL.replace(/\/$/, "")}/api/run-code-sync/`;
   for (let attempt = 0; attempt < 2; attempt++) {
     let response: Response;
