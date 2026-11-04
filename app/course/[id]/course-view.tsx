@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CheckCircle2, Circle, Network, NotebookPen, CheckSquare } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  CheckSquare,
+  Circle,
+  ListChecks,
+  Network,
+  NotebookPen,
+} from "lucide-react";
 import { MasteryRing } from "@/components/course/mastery-ring";
 import { PlanView, LevelChip } from "@/components/plan/plan-view";
 import { QuizRunner } from "@/components/quiz/quiz-runner";
@@ -11,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { TopicMastery } from "@/lib/mastery";
 import type { StoredPlan } from "@/lib/plan/build";
+import { cn } from "@/lib/utils";
 
 interface Props {
   course: { id: string; title: string; subject: string; page_count: number };
@@ -52,63 +61,67 @@ export function CourseView({ course, topics, plan, kind, hasDiagnostic, uiLang }
       ? { id: topics[0].id, name: topics[0].name }
       : null;
 
+  const weakCount = levels.weak;
+  const stat = (label: string, value: string) => (
+    <div className="min-w-0">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="text-lg font-semibold leading-tight">{value}</dd>
+    </div>
+  );
+
   return (
     <div className="space-y-8">
-      <Card className="flex flex-col gap-5 sm:flex-row sm:items-center">
+      <Card className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
         <MasteryRing value={mastery} />
         <div className="min-w-0 flex-1 space-y-3">
           <div>
-            <h2 className="font-semibold">
-              {hasDiagnostic ? "Where you stand" : "Start with a quick quiz"}
+            <h2 className="text-lg font-semibold">
+              {hasDiagnostic ? "Where you stand" : "Ready when you are"}
             </h2>
             <p className="text-sm text-muted-foreground">
               {hasDiagnostic
-                ? `${levels.weak} weak · ${levels.okay} okay · ${levels.strong} strong, across ${topics.length} topics`
-                : `${topics.length} topics found. A short quiz shows which ones to study first.`}
+                ? weakCount > 0
+                  ? `${weakCount} ${weakCount === 1 ? "topic needs" : "topics need"} more work. Your plan puts them first.`
+                  : "Nothing is weak right now. Keep practising to stay sharp."
+                : "Take the quick quiz below to see which topics to study first, or jump straight into lesson 1."}
             </p>
           </div>
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{kind === "concepts" ? "Practice questions done" : "Exercises passed"}</span>
-              <span>
-                {exDone}/{exTotal}
-              </span>
-            </div>
-            <div
-              role="progressbar"
-              aria-label={kind === "concepts" ? "Practice done" : "Exercises passed"}
-              aria-valuenow={exTotal ? Math.round((exDone / exTotal) * 100) : 0}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              className="h-2 overflow-hidden rounded-full bg-muted"
-            >
-              <div
-                className="h-full rounded-full bg-success transition-all"
-                style={{ width: `${exTotal ? (exDone / exTotal) * 100 : 0}%` }}
-              />
-            </div>
-          </div>
+          <dl className="grid grid-cols-3 gap-4">
+            {stat("Topics", String(topics.length))}
+            {stat(
+              kind === "concepts" ? "Practice done" : "Exercises passed",
+              `${exDone}/${exTotal}`,
+            )}
+            {hasDiagnostic
+              ? stat("Strong topics", `${levels.strong}/${topics.length}`)
+              : stat("Quiz", "Not taken")}
+          </dl>
         </div>
-        {hasDiagnostic && next && (
+        {next && (
           <Link
             href={`/learn/${next.id}`}
-            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground"
+            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
-            Continue: {next.name.length > 22 ? `${next.name.slice(0, 21)}…` : next.name}
+            {hasDiagnostic ? "Continue" : "Start lesson 1"}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         )}
       </Card>
 
-      <section className="space-y-3" aria-label="Quiz">
-        <h2 className="text-lg font-semibold">
-          {hasDiagnostic ? "Practice" : "Find out what to study first"}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {hasDiagnostic
-            ? "New questions on your weakest topics, never repeating earlier ones."
-            : "A short diagnostic quiz covers every topic. Your answers decide what goes first in your revision plan."}
-        </p>
+      <Card id="quiz" className="space-y-4 p-5 sm:p-6" aria-label="Quiz">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-accent">
+            <ListChecks className="h-4 w-4" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="font-semibold">{hasDiagnostic ? "Practice quiz" : "Diagnostic quiz"}</h2>
+            <p className="text-sm text-muted-foreground">
+              {hasDiagnostic
+                ? "New questions on your weakest topics. Each one quotes the page it comes from, and none repeat."
+                : "About 3 minutes. Your answers decide what goes first in your revision plan."}
+            </p>
+          </div>
+        </div>
         <QuizRunner
           courseId={course.id}
           kind={hasDiagnostic ? "practice" : "diagnostic"}
@@ -116,7 +129,7 @@ export function CourseView({ course, topics, plan, kind, hasDiagnostic, uiLang }
           topicNames={names}
           onFinished={() => router.refresh()}
         />
-      </section>
+      </Card>
 
       {plan && (
         <PlanView plan={plan} uiLang={uiLang} limit={3} moreHref={`/course/${course.id}/plan`} />
@@ -147,15 +160,33 @@ export function CourseView({ course, topics, plan, kind, hasDiagnostic, uiLang }
         <div className="grid gap-3 sm:grid-cols-2">
           {topics.map((t, i) => {
             const done = t.exercises.filter((e) => e.passed).length;
+            const complete = t.exercises.length > 0 && done === t.exercises.length;
+            const isNext = next?.id === t.id;
             return (
-              <Card key={t.id} className="flex flex-col gap-3 p-4">
+              <Card
+                key={t.id}
+                className={cn(
+                  "flex flex-col gap-3 p-4",
+                  isNext && "border-primary/40 ring-1 ring-primary/20",
+                )}
+              >
                 <div className="flex items-start gap-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold">
-                    {i + 1}
+                  <span
+                    className={cn(
+                      "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                      complete ? "bg-success/15 text-success" : "bg-accent",
+                    )}
+                  >
+                    {complete ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : i + 1}
                   </span>
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-medium">{t.name}</h3>
+                      {isNext && hasDiagnostic && (
+                        <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
+                          Up next
+                        </span>
+                      )}
                       {t.mastery && <LevelChip level={t.mastery.level} score={t.mastery.score} />}
                     </div>
                     <p className="line-clamp-2 text-sm text-muted-foreground">{t.summary}</p>
@@ -201,8 +232,9 @@ export function CourseView({ course, topics, plan, kind, hasDiagnostic, uiLang }
                   </details>
                 )}
                 <Link href={`/learn/${t.id}`} className="mt-auto">
-                  <Button size="sm" variant="outline">
-                    Open lesson
+                  <Button size="sm" variant={isNext ? "default" : "outline"}>
+                    {isNext ? "Start lesson" : "Open lesson"}
+                    <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                   </Button>
                 </Link>
               </Card>

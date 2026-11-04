@@ -671,8 +671,9 @@ body {
   opacity: 1;
 }
 
+/* Positioning comes from the utility classes on the element (relative, then sticky on wide screens); a fixed
+   `position: relative` here would turn the sticky offset into a permanent downward shift. */
 .dashboard-upload-shell {
-  position: relative;
 }
 
 .dashboard-upload-shell__glow {

@@ -9,6 +9,7 @@ import {
   Flame,
   Network,
   NotebookPen,
+  Sparkles,
 } from "lucide-react";
 import { LevelChip } from "@/components/plan/plan-view";
 import { Reveal, Stagger, StaggerItem } from "@/components/design/motion-primitives";
@@ -18,7 +19,8 @@ import { SiteHeader } from "@/components/ui/site-header";
 import { createClient } from "@/lib/supabase/server";
 import { loadOverview, type CourseSummary } from "@/lib/study/overview";
 
-function Tile({
+/** One number in the header strip: a label, the value, and an optional small hint or visual. */
+function Stat({
   label,
   value,
   hint,
@@ -30,12 +32,11 @@ function Tile({
   children?: React.ReactNode;
 }) {
   return (
-    <Card className="space-y-0.5 p-4">
+    <div className="min-w-0 space-y-1">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-2xl font-semibold tracking-tight">{value}</p>
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-      {children}
-    </Card>
+      <p className="text-2xl font-semibold leading-none tracking-tight">{value}</p>
+      {children ?? (hint && <p className="truncate text-xs text-muted-foreground">{hint}</p>)}
+    </div>
   );
 }
 
@@ -44,7 +45,7 @@ function WeekBars({ days }: { days: { date: string; count: number }[] }) {
   const max = Math.max(1, ...days.map((d) => d.count));
   return (
     <div
-      className="flex h-6 items-end gap-1 pt-1"
+      className="flex h-4 items-end gap-0.5"
       role="img"
       aria-label="Activity over the last 7 days"
     >
@@ -53,7 +54,7 @@ function WeekBars({ days }: { days: { date: string; count: number }[] }) {
           key={d.date}
           title={`${d.date}: ${d.count}`}
           className={d.count ? "flex-1 rounded-sm bg-foreground/70" : "flex-1 rounded-sm bg-muted"}
-          style={{ height: `${d.count ? 25 + (d.count / max) * 75 : 14}%` }}
+          style={{ height: `${d.count ? 30 + (d.count / max) * 70 : 18}%` }}
         />
       ))}
     </div>
@@ -66,34 +67,37 @@ function greeting(name: string | null | undefined): string {
   return name ? `${part}, ${name}` : part;
 }
 
+const MASTERY_DOT = { weak: "bg-danger", okay: "bg-warning", strong: "bg-success" } as const;
+
 function CourseCard({ c }: { c: CourseSummary }) {
-  const links = [
+  const tools = [
     { href: "quizzes", label: "Quizzes", Icon: BarChart3 },
     { href: "notes", label: "Notes", Icon: NotebookPen },
     { href: "mindmap", label: "Mind map", Icon: Network },
     { href: "checklist", label: "Checklist", Icon: CheckSquare },
   ];
+  const started = c.mastery !== null;
   return (
-    <Card className="flex h-full flex-col gap-4">
+    <Card className="course-card flex h-full flex-col gap-4 p-5">
       <Link href={`/course/${c.id}`} className="group flex items-start gap-3 rounded-lg">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-accent">
           <FileText className="h-4 w-4" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="font-medium text-balance group-hover:underline">{c.title}</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="line-clamp-2 font-semibold leading-snug text-balance group-hover:underline">
+            {c.title}
+          </h2>
+          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
             {c.subject} · {c.pageCount} pages · {c.topicCount} topics
           </p>
         </div>
       </Link>
 
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            {c.mastery === null ? "Take the quiz to see your mastery" : `${c.mastery}% mastery`}
-          </span>
-          <span>
-            {c.exercisesPassed}/{c.exerciseTotal} exercises
+      <div className="space-y-2">
+        <div className="flex items-baseline justify-between text-sm">
+          <span className="font-medium">{started ? `${c.mastery}% mastery` : "Not started"}</span>
+          <span className="text-xs text-muted-foreground">
+            {c.exercisesPassed}/{c.exerciseTotal} {c.exerciseTotal === 1 ? "exercise" : "exercises"}
           </span>
         </div>
         <div
@@ -105,43 +109,41 @@ function CourseCard({ c }: { c: CourseSummary }) {
           className="h-2 overflow-hidden rounded-full bg-muted"
         >
           <div
-            className="h-full rounded-full bg-foreground/70"
+            className="h-full rounded-full bg-foreground/75 transition-[width] duration-700"
             style={{ width: `${c.mastery ?? 0}%` }}
           />
         </div>
-        {c.mastery !== null && (
-          <p className="text-xs text-muted-foreground">
-            {c.levels.weak} weak · {c.levels.okay} okay · {c.levels.strong} strong
+        {started && (
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            {(["weak", "okay", "strong"] as const).map((level) => (
+              <span key={level} className="inline-flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${MASTERY_DOT[level]}`} aria-hidden="true" />
+                {c.levels[level]} {level}
+              </span>
+            ))}
           </p>
         )}
       </div>
 
-      {c.next ? (
-        <Link
-          href={`/learn/${c.next.topicId}`}
-          className="flex items-center justify-between gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium"
-        >
-          <span className="min-w-0 truncate">Continue: {c.next.topicName}</span>
-          <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
-        </Link>
-      ) : (
-        <Link
-          href={`/course/${c.id}/quizzes`}
-          className="flex items-center justify-between gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium"
-        >
-          Take the diagnostic quiz
-          <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
-        </Link>
-      )}
+      <Link
+        href={c.next ? `/learn/${c.next.topicId}` : `/course/${c.id}/quizzes`}
+        className="mt-auto flex items-center justify-between gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+      >
+        <span className="min-w-0 truncate">
+          {c.next ? `Continue: ${c.next.topicName}` : "Take the diagnostic quiz"}
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+      </Link>
 
-      <ul className="grid grid-cols-2 gap-1.5">
-        {links.map(({ href, label, Icon }) => (
+      <ul className="grid grid-cols-4 gap-1.5" aria-label="Study tools">
+        {tools.map(({ href, label, Icon }) => (
           <li key={href}>
             <Link
               href={`/course/${c.id}/${href}`}
-              className="flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium hover:bg-accent"
+              className="flex flex-col items-center gap-1 rounded-lg border py-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
-              <Icon className="h-3.5 w-3.5" aria-hidden="true" /> {label}
+              <Icon className="h-4 w-4" aria-hidden="true" />
+              {label}
             </Link>
           </li>
         ))}
@@ -168,67 +170,117 @@ export default async function DashboardPage() {
   // First visit after sign-up: the animated welcome comes first.
   if (user && profile && !profile.onboarded_at) redirect("/welcome");
   const next = o.courses.find((c) => c.next);
+  // With no plan yet, the best next step is the quiz (or a first lesson) for the newest course that hasn't had one.
+  const unquizzed = o.courses.find((c) => c.mastery === null);
   const first = profile?.display_name?.split(/\s+/)[0];
 
   return (
     <div className="dashboard-canvas min-h-screen">
       <SiteHeader />
-      <main className="relative mx-auto grid w-full max-w-5xl flex-1 gap-8 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-[1fr_340px]">
+      <main className="relative mx-auto grid w-full max-w-5xl flex-1 items-start gap-8 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-[1fr_340px]">
         <section className="min-w-0 space-y-6">
-          <Reveal className="dashboard-heading relative overflow-hidden rounded-3xl border bg-card/70 p-6 shadow-sm backdrop-blur sm:p-8">
+          <Reveal className="dashboard-heading relative overflow-hidden rounded-3xl border bg-card/70 p-5 shadow-sm backdrop-blur sm:p-6">
             <div className="dashboard-heading__glow" aria-hidden="true" />
-            <div className="relative">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Your learning space
-              </p>
-              <h1 className="text-3xl font-semibold tracking-tight">{greeting(first)}</h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {o.courses.length === 0
-                  ? "Let's build your first course."
-                  : "Pick up where you left off, or start something new."}
-              </p>
+            <div className="relative space-y-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                    {greeting(first)}
+                  </h1>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {o.courses.length === 0
+                      ? "Let's build your first course."
+                      : "Pick up where you left off, or start something new."}
+                  </p>
+                </div>
+                {o.courses.length > 0 && o.streak.current > 0 && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-medium">
+                    <Flame className="h-4 w-4" aria-hidden="true" />
+                    {o.streak.current} day streak
+                  </span>
+                )}
+              </div>
+              {o.courses.length > 0 && (
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t pt-4 sm:grid-cols-4">
+                  <Stat label="Courses" value={String(o.courses.length)} />
+                  <Stat
+                    label="Last 7 days"
+                    value={
+                      String(o.activity.slice(-7).filter((d) => d.count > 0).length) + " active"
+                    }
+                  >
+                    <WeekBars days={o.activity.slice(-7)} />
+                  </Stat>
+                  <Stat
+                    label="Avg quiz score"
+                    value={o.totals.avgScore === null ? "No quiz yet" : `${o.totals.avgScore}%`}
+                    hint={
+                      o.totals.avgScore === null
+                        ? "Take one to see it"
+                        : `${o.totals.quizzes} taken`
+                    }
+                  />
+                  <Stat label="Exercises passed" value={String(o.totals.exercisesPassed)} />
+                </dl>
+              )}
             </div>
           </Reveal>
 
-          {o.courses.length > 0 && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Tile label="Courses" value={String(o.courses.length)} />
-              <Tile
-                label="Day streak"
-                value={String(o.streak.current)}
-                hint={o.streak.current > 0 ? "Keep it going" : "Study today to start one"}
-              >
-                <WeekBars days={o.activity.slice(-7)} />
-              </Tile>
-              <Tile
-                label="Avg quiz score"
-                value={o.totals.avgScore === null ? "–" : `${o.totals.avgScore}%`}
-              />
-              <Tile label="Exercises passed" value={String(o.totals.exercisesPassed)} />
-            </div>
-          )}
-
-          {next?.next && (
-            <Card className="flex flex-col gap-4 border-primary/20 bg-accent sm:flex-row sm:items-center">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          {next?.next ? (
+            <Card className="flex flex-col gap-4 border-primary/25 bg-accent/70 sm:flex-row sm:items-center">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
                 <Flame className="h-5 w-5" aria-hidden="true" />
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Up next · {next.title}
                 </p>
-                <p className="flex flex-wrap items-center gap-2 font-medium">
+                <p className="flex flex-wrap items-center gap-2 font-semibold">
                   {next.next.topicName} <LevelChip level={next.next.level} />
                 </p>
                 <p className="text-sm text-muted-foreground">{next.next.nextStep}</p>
               </div>
               <Link
                 href={`/learn/${next.next.topicId}`}
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
               >
                 Start <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
             </Card>
+          ) : (
+            unquizzed && (
+              <Card className="flex flex-col gap-4 border-primary/25 bg-accent/70 sm:flex-row sm:items-center">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <Sparkles className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Start here · {unquizzed.title}
+                  </p>
+                  <p className="font-semibold">Find out what to study first</p>
+                  <p className="text-sm text-muted-foreground">
+                    A short quiz (about 3 minutes) shows your weak topics and builds your revision
+                    plan.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href={`/course/${unquizzed.id}/quizzes`}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                  >
+                    Take the quiz <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                  {unquizzed.firstTopic && (
+                    <Link
+                      href={`/learn/${unquizzed.firstTopic.id}`}
+                      className="inline-flex items-center justify-center rounded-xl border bg-card px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted"
+                    >
+                      Start lesson 1
+                    </Link>
+                  )}
+                </div>
+              </Card>
+            )
           )}
 
           {o.courses.length === 0 ? (
@@ -259,7 +311,12 @@ export default async function DashboardPage() {
             </Card>
           ) : (
             <div className="space-y-3">
-              <h2 className="text-lg font-semibold">Your courses</h2>
+              <h2 className="flex items-baseline gap-2 text-lg font-semibold">
+                Your courses
+                <span className="text-sm font-normal text-muted-foreground">
+                  {o.courses.length}
+                </span>
+              </h2>
               <Stagger className="grid gap-4 sm:grid-cols-2" role="list">
                 {o.courses.map((c) => (
                   <StaggerItem key={c.id} role="listitem">
@@ -270,7 +327,10 @@ export default async function DashboardPage() {
             </div>
           )}
         </section>
-        <Reveal delay={0.1} className="dashboard-upload-shell h-fit lg:sticky lg:top-24">
+        <Reveal
+          delay={0.1}
+          className="dashboard-upload-shell relative h-fit self-start lg:sticky lg:top-20"
+        >
           <div className="dashboard-upload-shell__glow" aria-hidden="true" />
           <div className="relative">
             <UploadCard />

@@ -30,6 +30,8 @@ export interface CourseSummary {
   planVersion: number | null;
   /** The plan's first topic: what to study next. */
   next: { topicId: string; topicName: string; level: MasteryLevel; nextStep: string } | null;
+  /** The course's first topic, for a "start the first lesson" shortcut before any quiz. */
+  firstTopic: { id: string; name: string } | null;
 }
 
 export interface Overview {
@@ -112,6 +114,7 @@ export async function loadOverview(supabase: Supabase): Promise<Overview> {
       exerciseTotal: snap.exercises.length,
       quizzes: snap.attempts.length,
       planVersion: latest?.version ?? null,
+      firstTopic: snap.topics[0] ? { id: snap.topics[0].id, name: snap.topics[0].name } : null,
       next: first
         ? {
             topicId: first.topicId,
