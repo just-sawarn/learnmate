@@ -1,4 +1,4 @@
-export const MAX_PAGES = 20;
+export const MAX_PAGES = 40;
 export const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const TARGET_CHARS = 2400;
 

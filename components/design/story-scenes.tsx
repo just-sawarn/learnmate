@@ -52,7 +52,7 @@ function UploadScene({ p }: { p: number }) {
         >
           <Upload className="mb-1 h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <p className="text-xs font-medium">{done ? "Uploaded" : "Drop your PDF here"}</p>
-          <p className="text-[10px] text-muted-foreground">Up to 20 pages · 10 MB</p>
+          <p className="text-[10px] text-muted-foreground">Up to 40 pages · 10 MB</p>
         </div>
         <div
           className="absolute left-1/2 w-[78%] max-w-72 rounded-xl border bg-card p-3 shadow-lg"

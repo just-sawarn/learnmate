@@ -46,7 +46,7 @@ function classifyPdfError(error: unknown): IngestError {
 }
 
 /**
- * Extracts text page by page. Enforces the 10 MB / 20 page limits and detects scanned PDFs:
+ * Extracts text page by page. Enforces the 10 MB / 40 page limits and detects scanned PDFs:
  * if at least half the pages have no text layer the upload is rejected with an explanation.
  */
 export async function extractPdf(data: Uint8Array): Promise<ExtractedPdf> {

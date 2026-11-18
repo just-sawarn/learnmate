@@ -45,7 +45,7 @@ export const COPY = {
     eyebrow: "FAQ",
     title: "Questions, answered.",
     items: [
-      { q: "What can I upload?", a: "A PDF of up to 20 pages, or pasted text." },
+      { q: "What can I upload?", a: "A PDF of up to 40 pages, or pasted text." },
       {
         q: "Which languages can I run?",
         a: "HTML/CSS/JS, React, Python, C, C++, Java, Go and Rust, all in the side-along IDE.",

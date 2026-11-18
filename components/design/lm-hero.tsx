@@ -491,7 +491,7 @@ function UploadScene({ t }: { t: Clock }) {
         transition={{ duration: s >= 1 ? 0.5 : 0.35, ease: EASE }}
       >
         <p className="absolute inset-x-0 bottom-3 m-0 text-center text-xs text-lm-muted">
-          PDF up to 20 pages, or paste text
+          PDF up to 40 pages, or paste text
         </p>
         <AnimatePresence>
           {s >= 2 && (

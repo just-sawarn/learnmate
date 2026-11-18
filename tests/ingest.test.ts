@@ -33,9 +33,9 @@ describe("PDF extraction", () => {
     await expect(extractPdf(makePdf(["", "", TEXT]))).rejects.toMatchObject({ code: "scanned" });
   });
 
-  it("rejects PDFs with more than 20 pages with a clear message", async () => {
+  it("rejects PDFs with more than 40 pages with a clear message", async () => {
     const pages = Array.from({ length: MAX_PAGES + 1 }, () => TEXT);
-    await expect(extractPdf(makePdf(pages))).rejects.toThrow(/21 pages.*up to 20/);
+    await expect(extractPdf(makePdf(pages))).rejects.toThrow(/41 pages.*up to 40/);
   });
 
   it("rejects non-PDF bytes", async () => {
@@ -51,9 +51,9 @@ describe("upload limits", () => {
     expect(() => assertUploadSize(MAX_PDF_BYTES + 1)).toThrow(IngestError);
   });
 
-  it("enforces the 20 page limit", () => {
+  it("enforces the 40 page limit", () => {
     expect(() => assertPageCount(20)).not.toThrow();
-    expect(() => assertPageCount(21)).toThrow(/up to 20 pages/);
+    expect(() => assertPageCount(41)).toThrow(/up to 40 pages/);
   });
 });
 
@@ -72,7 +72,7 @@ describe("pasted text splitting", () => {
     expect(pages.length).toBeLessThanOrEqual(MAX_PAGES);
   });
 
-  it("never returns more than 20 sections", () => {
+  it("never returns more than 40 sections", () => {
     const text = Array.from({ length: 50 }, (_, i) => `section ${i}`).join("\n\n---\n\n");
     expect(splitPastedText(text)).toHaveLength(MAX_PAGES);
   });
